@@ -1,5 +1,6 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { rateLimit, getRateLimitConfig, getClientKey } from '@/lib/rate-limit'
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
@@ -7,6 +8,29 @@ export async function middleware(request: NextRequest) {
       headers: request.headers,
     },
   })
+
+  const { pathname } = request.nextUrl
+
+  const rateLimitConfig = getRateLimitConfig(pathname)
+  if (rateLimitConfig) {
+    const clientKey = getClientKey(request)
+    const rateLimitKey = `${clientKey}:${pathname}`
+    const result = rateLimit(rateLimitKey, rateLimitConfig.limit, rateLimitConfig.windowMs)
+
+    if (!result.allowed) {
+      return new NextResponse('Too Many Requests', {
+        status: 429,
+        headers: {
+          'Retry-After': String(Math.ceil((result.resetTime - Date.now()) / 1000)),
+          'X-RateLimit-Limit': String(rateLimitConfig.limit),
+          'X-RateLimit-Remaining': '0',
+        },
+      })
+    }
+
+    response.headers.set('X-RateLimit-Limit', String(rateLimitConfig.limit))
+    response.headers.set('X-RateLimit-Remaining', String(result.remaining))
+  }
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -41,8 +65,6 @@ export async function middleware(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser()
-
-  const { pathname } = request.nextUrl
 
   const publicRoutes = ['/', '/login', '/signup', '/forgot-password', '/onboarding']
   const publicPsychologistRoutes = pathname.startsWith('/p/')
