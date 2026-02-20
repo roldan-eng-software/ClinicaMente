@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { saveClinicData } from '@/app/actions/onboarding'
 
 type Step = 'clinic' | 'financial' | 'availability' | 'confirmation'
 
@@ -90,12 +91,33 @@ export default function OnboardingPage() {
       .replace(/(^-|-$)/g, '')
   }
 
-  const validateClinicStep = () => {
+  const handleSaveClinic = async () => {
     if (!formData.fullName || !formData.crp || !formData.slug) {
       setError('Preencha todos os campos obrigatórios')
-      return false
+      return
     }
-    return true
+
+    setSaving(true)
+    setError(null)
+
+    const formDataObj = new FormData()
+    formDataObj.append('fullName', formData.fullName)
+    formDataObj.append('slug', formData.slug)
+    formDataObj.append('crp', formData.crp)
+    formDataObj.append('specialty', formData.specialty)
+    formDataObj.append('bio', formData.bio)
+    formDataObj.append('timezone', formData.timezone)
+
+    const result = await saveClinicData(formDataObj)
+
+    if (result?.error) {
+      setError(result.error)
+      setSaving(false)
+      return
+    }
+
+    setSaving(false)
+    setStep('financial')
   }
 
   const validateFinancialStep = () => {
@@ -106,58 +128,18 @@ export default function OnboardingPage() {
     return true
   }
 
-  const handleNext = () => {
-    setError(null)
-    
-    if (step === 'clinic' && !validateClinicStep()) return
-    if (step === 'financial' && !validateFinancialStep()) return
-    
-    const steps: Step[] = ['clinic', 'financial', 'availability', 'confirmation']
-    const currentIndex = steps.indexOf(step)
-    if (currentIndex < steps.length - 1) {
-      setStep(steps[currentIndex + 1])
-    }
-  }
+  const handleSaveFinancial = async () => {
+    if (!validateFinancialStep()) return
 
-  const handleBack = () => {
-    setError(null)
-    const steps: Step[] = ['clinic', 'financial', 'availability', 'confirmation']
-    const currentIndex = steps.indexOf(step)
-    if (currentIndex > 0) {
-      setStep(steps[currentIndex - 1])
-    }
-  }
-
-  const handleSubmit = async () => {
     setSaving(true)
     setError(null)
-
-    const { data: existing } = await supabase
-      .from('psychologists')
-      .select('id')
-      .eq('slug', formData.slug)
-      .neq('user_id', user.id)
-      .single()
-
-    if (existing) {
-      setError('Este URL já está em uso. Escolha outro.')
-      setSaving(false)
-      return
-    }
 
     const { error: updateError } = await supabase
       .from('psychologists')
       .update({
-        full_name: formData.fullName,
-        slug: formData.slug,
-        crp: formData.crp,
-        specialty: formData.specialty,
-        bio: formData.bio,
         default_session_price: parseFloat(formData.sessionPrice),
         session_duration_minutes: parseInt(formData.sessionDuration),
         cancellation_policy_hours: parseInt(formData.cancellationPolicy),
-        timezone: formData.timezone,
-        onboarding_completed: true,
       })
       .eq('user_id', user.id)
 
@@ -167,7 +149,16 @@ export default function OnboardingPage() {
       return
     }
 
+    setSaving(false)
+    setStep('availability')
+  }
+
+  const handleSaveAvailability = async () => {
+    setSaving(true)
+    setError(null)
+
     const enabledDays = availability.filter(d => d.enabled)
+    
     if (enabledDays.length > 0) {
       const rules = enabledDays.map(d => ({
         psychologist_id: psychologist.id,
@@ -178,6 +169,25 @@ export default function OnboardingPage() {
       }))
 
       await supabase.from('availability_rules').insert(rules)
+    }
+
+    setSaving(false)
+    setStep('confirmation')
+  }
+
+  const handleFinish = async () => {
+    setSaving(true)
+    setError(null)
+
+    const { error: finishError } = await supabase
+      .from('psychologists')
+      .update({ onboarding_completed: true })
+      .eq('user_id', user.id)
+
+    if (finishError) {
+      setError(finishError.message)
+      setSaving(false)
+      return
     }
 
     router.push('/dashboard')
@@ -238,9 +248,7 @@ export default function OnboardingPage() {
                   value={formData.fullName}
                   onChange={(e) => {
                     setFormData({ ...formData, fullName: e.target.value })
-                    if (!formData.slug) {
-                      setFormData(prev => ({ ...prev, slug: generateSlug(e.target.value) }))
-                    }
+                    setFormData(prev => ({ ...prev, slug: generateSlug(e.target.value) }))
                   }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500"
                 />
@@ -302,6 +310,29 @@ export default function OnboardingPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500"
                 />
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Fuso horário
+                </label>
+                <select
+                  value={formData.timezone}
+                  onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500"
+                >
+                  <option value="America/Sao_Paulo">Brasília (GMT-3)</option>
+                  <option value="America/Manaus">Manaus (GMT-4)</option>
+                  <option value="America/Recife">Recife (GMT-3)</option>
+                </select>
+              </div>
+
+              <button
+                onClick={handleSaveClinic}
+                disabled={saving}
+                className="w-full py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+              >
+                {saving ? 'Salvando...' : 'Continuar'}
+              </button>
             </div>
           )}
 
@@ -350,19 +381,20 @@ export default function OnboardingPage() {
                 </select>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Fuso horário
-                </label>
-                <select
-                  value={formData.timezone}
-                  onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500"
+              <div className="flex space-x-4">
+                <button
+                  onClick={() => setStep('clinic')}
+                  className="flex-1 py-3 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
                 >
-                  <option value="America/Sao_Paulo">Brasília (GMT-3)</option>
-                  <option value="America/Manaus">Manaus (GMT-4)</option>
-                  <option value="America/Recife">Recife (GMT-3)</option>
-                </select>
+                  Voltar
+                </button>
+                <button
+                  onClick={handleSaveFinancial}
+                  disabled={saving}
+                  className="flex-1 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {saving ? 'Salvando...' : 'Continuar'}
+                </button>
               </div>
             </div>
           )}
@@ -418,6 +450,22 @@ export default function OnboardingPage() {
                   </div>
                 </div>
               ))}
+
+              <div className="flex space-x-4">
+                <button
+                  onClick={() => setStep('financial')}
+                  className="flex-1 py-3 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+                >
+                  Voltar
+                </button>
+                <button
+                  onClick={handleSaveAvailability}
+                  disabled={saving}
+                  className="flex-1 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {saving ? 'Salvando...' : 'Continuar'}
+                </button>
+              </div>
             </div>
           )}
 
@@ -453,36 +501,24 @@ export default function OnboardingPage() {
                   </span>
                 </div>
               </div>
+
+              <div className="flex space-x-4">
+                <button
+                  onClick={() => setStep('availability')}
+                  className="flex-1 py-3 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+                >
+                  Voltar
+                </button>
+                <button
+                  onClick={handleFinish}
+                  disabled={saving}
+                  className="flex-1 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
+                >
+                  {saving ? 'Salvando...' : 'Finalizar'}
+                </button>
+              </div>
             </div>
           )}
-
-          <div className="flex justify-between mt-8">
-            {step !== 'clinic' && (
-              <button
-                onClick={handleBack}
-                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-              >
-                Voltar
-              </button>
-            )}
-            
-            {step === 'confirmation' ? (
-              <button
-                onClick={handleSubmit}
-                disabled={saving}
-                className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 ml-auto"
-              >
-                {saving ? 'Salvando...' : 'Finalizar'}
-              </button>
-            ) : (
-              <button
-                onClick={handleNext}
-                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 ml-auto"
-              >
-                Continuar
-              </button>
-            )}
-          </div>
         </div>
       </div>
     </div>
