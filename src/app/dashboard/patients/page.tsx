@@ -198,7 +198,7 @@ export default function PatientsPage() {
                 Fechar
               </button>
               <button
-                onClick={() => router.push('/dashboard/settings/plan')}
+                onClick={() => router.push('/dashboard/upgrade')}
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
               >
                 Ver Planos

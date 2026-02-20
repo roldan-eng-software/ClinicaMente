@@ -54,3 +54,47 @@ export async function createCheckoutSession({
 export async function retrieveCheckoutSession(sessionId: string) {
   return stripe.checkout.sessions.retrieve(sessionId)
 }
+
+export async function createSubscriptionCheckout({
+  psychologistId,
+  psychologistEmail,
+  psychologistName,
+  successUrl,
+  cancelUrl,
+}: {
+  psychologistId: string
+  psychologistEmail: string
+  psychologistName: string
+  successUrl: string
+  cancelUrl: string
+}) {
+  const priceId = process.env.STRIPE_PRO_PRICE_ID
+
+  if (!priceId) {
+    throw new Error('STRIPE_PRO_PRICE_ID não configurada')
+  }
+
+  const session = await stripe.checkout.sessions.create({
+    payment_method_types: ['card', 'pix'],
+    line_items: [
+      {
+        price: priceId,
+        quantity: 1,
+      },
+    ],
+    mode: 'subscription',
+    success_url: successUrl,
+    cancel_url: cancelUrl,
+    customer_email: psychologistEmail,
+    metadata: {
+      psychologistId,
+    },
+    subscription_data: {
+      metadata: {
+        psychologistId,
+      },
+    },
+  })
+
+  return session
+}

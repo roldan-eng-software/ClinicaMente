@@ -18,9 +18,13 @@ export default async function DashboardLayout({
 
   const { data: psychologist, error } = await supabase
     .from('psychologists')
-    .select('id, full_name, slug, timezone, onboarding_completed')
+    .select('id, full_name, slug, timezone, onboarding_completed, plan, plan_expires_at')
     .eq('user_id', user.id)
     .single()
+
+  const now = new Date()
+  const planExpired = psychologist?.plan_expires_at && new Date(psychologist.plan_expires_at) < now
+  const plan = planExpired ? 'free' : (psychologist?.plan || 'free')
 
   if (error || !psychologist) {
     redirect('/login')
@@ -31,7 +35,7 @@ export default async function DashboardLayout({
   }
 
   return (
-    <DashboardProvider psychologist={psychologist}>
+    <DashboardProvider psychologist={{ ...psychologist, plan }}>
       <div className="min-h-screen bg-gray-50">
         <header className="bg-white shadow-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -99,6 +103,14 @@ export default async function DashboardLayout({
             >
               Prontuário
             </Link>
+            {plan === 'free' && (
+              <Link
+                href="/dashboard/upgrade"
+                className="text-blue-600 hover:text-blue-700 font-medium"
+              >
+                Upgrade
+              </Link>
+            )}
           </div>
         </div>
 

@@ -7,6 +7,7 @@ interface Psychologist {
   full_name: string
   slug: string
   timezone: string
+  plan?: string
 }
 
 interface DashboardContextType {

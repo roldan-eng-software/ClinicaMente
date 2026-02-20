@@ -5,6 +5,7 @@ import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { createCheckoutSession } from '@/lib/stripe'
+import { checkPlanLimit } from '@/lib/plan-check'
 
 const CONSENT_VERSION = '1.0'
 
@@ -81,27 +82,14 @@ export async function bookSlot(formData: FormData) {
     return { error: 'Psicólogo não encontrado' }
   }
 
-  const { data: planData } = await supabase
-    .from('plan_limits')
-    .select('plan_type')
-    .eq('psychologist_id', psychologistId)
-    .single()
-
-  const startOfMonth = new Date()
-  startOfMonth.setDate(1)
-  startOfMonth.setHours(0, 0, 0, 0)
-
-  const { count: monthAppointments } = await supabase
-    .from('appointments')
-    .select('*', { count: 'exact', head: true })
-    .eq('psychologist_id', psychologistId)
-    .gte('scheduled_at', startOfMonth.toISOString())
-    .neq('status', 'cancelled')
-
-  const maxAppointments = planData?.plan_type === 'pro' ? 100 : 30
-
-  if (monthAppointments !== null && monthAppointments >= maxAppointments) {
-    return { error: `Limite de ${maxAppointments} consultas/mês atingido para este plano` }
+  const planCheck = await checkPlanLimit(psychologistId, 'create_appointment')
+  if (!planCheck.allowed) {
+    return { 
+      error: planCheck.limit 
+        ? `Limite de ${planCheck.limit} consultas/mês atingido para este plano`
+        : `Funcionalidade não disponível no seu plano`,
+      upgradeUrl: planCheck.upgradeUrl
+    }
   }
 
   const { data: slot, error: slotError } = await supabase

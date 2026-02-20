@@ -108,5 +108,80 @@ export async function POST(req: Request) {
     console.log(`Pagamento expirado para appointment ${appointment_id}, slot liberado`)
   }
 
+  if (event.type === 'customer.subscription.created') {
+    const subscription = event.data.object as any
+    const psychologistId = subscription.metadata?.psychologistId
+
+    if (psychologistId) {
+      const currentPeriodEnd = new Date(subscription.current_period_end * 1000)
+
+      await supabase
+        .from('psychologists')
+        .update({
+          plan: 'pro',
+          plan_expires_at: currentPeriodEnd.toISOString(),
+          stripe_subscription_id: subscription.id,
+        })
+        .eq('id', psychologistId)
+
+      console.log(`Assinatura Pro ativada para psicólogo ${psychologistId}`)
+    }
+  }
+
+  if (event.type === 'customer.subscription.updated') {
+    const subscription = event.data.object as any
+    const psychologistId = subscription.metadata?.psychologistId
+
+    if (psychologistId) {
+      const currentPeriodEnd = new Date(subscription.current_period_end * 1000)
+      const status = subscription.status
+
+      if (status === 'active') {
+        await supabase
+          .from('psychologists')
+          .update({
+            plan: 'pro',
+            plan_expires_at: currentPeriodEnd.toISOString(),
+          })
+          .eq('id', psychologistId)
+
+        console.log(`Assinatura Pro renovada para psicólogo ${psychologistId}`)
+      } else if (status === 'canceled' || status === 'unpaid') {
+        await supabase
+          .from('psychologists')
+          .update({
+            plan: 'free',
+            plan_expires_at: currentPeriodEnd.toISOString(),
+          })
+          .eq('id', psychologistId)
+
+        console.log(`Assinatura Pro cancelada/expirada para psicólogo ${psychologistId}`)
+      }
+    }
+  }
+
+  if (event.type === 'customer.subscription.deleted') {
+    const subscription = event.data.object as any
+
+    const { data: psychologist } = await supabase
+      .from('psychologists')
+      .select('id')
+      .eq('stripe_subscription_id', subscription.id)
+      .single()
+
+    if (psychologist) {
+      await supabase
+        .from('psychologists')
+        .update({
+          plan: 'free',
+          plan_expires_at: null,
+          stripe_subscription_id: null,
+        })
+        .eq('id', psychologist.id)
+
+      console.log(`Assinatura Pro encerrada para psicólogo ${psychologist.id}`)
+    }
+  }
+
   return NextResponse.json({ received: true })
 }
