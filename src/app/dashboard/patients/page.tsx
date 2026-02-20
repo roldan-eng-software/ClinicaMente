@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation'
 
 interface Patient {
   id: string
-  name: string
+  full_name: string
   email: string
   phone: string
   created_at: string
@@ -36,17 +36,17 @@ export default function PatientsPage() {
       .from('patients')
       .select(`
         id,
-        name,
+        full_name,
         email,
         phone,
         created_at,
         appointments:appointments(count)
       `)
       .eq('psychologist_id', psychologist.id)
-      .order('name', { ascending: true })
+      .order('full_name', { ascending: true })
 
     if (search) {
-      query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%`)
+      query = query.or(`full_name.ilike.%${search}%,email.ilike.%${search}%`)
     }
 
     const { data, error } = await query
@@ -152,11 +152,11 @@ export default function PatientsPage() {
                 <div className="flex items-center">
                   <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
                     <span className="text-blue-600 font-medium">
-                      {patient.name.charAt(0).toUpperCase()}
+                      {patient.full_name.charAt(0).toUpperCase()}
                     </span>
                   </div>
                   <div className="ml-4">
-                    <div className="font-medium text-gray-900">{patient.name}</div>
+                    <div className="font-medium text-gray-900">{patient.full_name}</div>
                     <div className="text-sm text-gray-500">{patient.email}</div>
                   </div>
                 </div>
