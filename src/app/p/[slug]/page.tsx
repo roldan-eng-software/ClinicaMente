@@ -30,7 +30,7 @@ export default async function PsychologistPublicPage({
 
   const { data: slots } = await supabase
     .from('slots')
-    .select('scheduled_at')
+    .select('start_at')
     .eq('psychologist_id', (
       await supabase
         .from('psychologists')
@@ -39,9 +39,9 @@ export default async function PsychologistPublicPage({
         .single()
     ).data?.id || '')
     .eq('status', 'available')
-    .gte('scheduled_at', today.toISOString())
-    .lte('scheduled_at', futureDate.toISOString())
-    .order('scheduled_at')
+    .gte('start_at', today.toISOString())
+    .lte('start_at', futureDate.toISOString())
+    .order('start_at')
     .limit(20)
 
   const timeZone = psychologist.timezone || 'America/Sao_Paulo'
@@ -71,11 +71,11 @@ export default async function PsychologistPublicPage({
     })
   }
 
-  const groupSlotsByDate = (slots: { scheduled_at: string }[]) => {
-    const grouped: Record<string, { scheduled_at: string }[]> = {}
+  const groupSlotsByDate = (slots: { start_at: string }[]) => {
+    const grouped: Record<string, { start_at: string }[]> = {}
     
     for (const slot of slots) {
-      const dateKey = new Date(slot.scheduled_at).toDateString()
+      const dateKey = new Date(slot.start_at).toDateString()
       if (!grouped[dateKey]) {
         grouped[dateKey] = []
       }
@@ -151,7 +151,7 @@ export default async function PsychologistPublicPage({
                 {groupedSlots.map(([dateKey, daySlots]) => (
                   <div key={dateKey} className="bg-gray-50 rounded-lg p-4">
                     <div className="text-sm font-medium text-gray-700 mb-2">
-                      {formatSlotDate(daySlots[0].scheduled_at)}
+                      {formatSlotDate(daySlots[0].start_at)}
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {daySlots.slice(0, 6).map((slot, i) => (
@@ -159,7 +159,7 @@ export default async function PsychologistPublicPage({
                           key={i}
                           className="px-3 py-1 bg-white border border-blue-200 text-blue-700 text-sm rounded-full"
                         >
-                          {formatSlotTime(slot.scheduled_at)}
+                          {formatSlotTime(slot.start_at)}
                         </span>
                       ))}
                       {daySlots.length > 6 && (

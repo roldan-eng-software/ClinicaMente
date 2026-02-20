@@ -8,7 +8,7 @@ import { bookSlot } from '@/app/actions/book-slot'
 
 interface Slot {
   id: string
-  scheduled_at: string
+  start_at: string
 }
 
 interface Psychologist {
@@ -99,7 +99,7 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
 
     const { data } = await supabase
       .from('slots')
-      .select('id, scheduled_at')
+      .select('id, start_at')
       .eq('psychologist_id', (
         await supabase
           .from('psychologists')
@@ -108,9 +108,9 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
           .single()
       ).data?.id || '')
       .eq('status', 'available')
-      .gte('scheduled_at', today.toISOString())
-      .lte('scheduled_at', futureDate.toISOString())
-      .order('scheduled_at')
+      .gte('start_at', today.toISOString())
+      .lte('start_at', futureDate.toISOString())
+      .order('start_at')
 
     setSlots(data || [])
   }
@@ -197,7 +197,7 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
     const grouped: Record<string, Slot[]> = {}
     
     for (const slot of slots) {
-      const dateKey = new Date(slot.scheduled_at).toDateString()
+      const dateKey = new Date(slot.start_at).toDateString()
       if (!grouped[dateKey]) {
         grouped[dateKey] = []
       }
@@ -257,7 +257,7 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
                   {groupedSlots.map(([dateKey, daySlots]) => (
                     <div key={dateKey} className="bg-gray-50 rounded-lg p-4">
                       <div className="text-sm font-medium text-gray-700 mb-3">
-                        {formatSlotDate(daySlots[0].scheduled_at)}
+                        {formatSlotDate(daySlots[0].start_at)}
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {daySlots.slice(0, 8).map((slot) => (
@@ -267,7 +267,7 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
                             disabled={checkingSlot}
                             className="px-4 py-2 bg-white border border-blue-200 text-blue-700 rounded-lg hover:bg-blue-50 hover:border-blue-400 transition-colors disabled:opacity-50"
                           >
-                            {formatSlotTime(slot.scheduled_at)}
+                            {formatSlotTime(slot.start_at)}
                           </button>
                         ))}
                         {daySlots.length > 8 && (
@@ -286,7 +286,7 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <div className="text-sm text-blue-600 mb-1">Horário selecionado</div>
                 <div className="text-lg font-semibold text-blue-900">
-                  {formatSlotDate(selectedSlot.scheduled_at)} às {formatSlotTime(selectedSlot.scheduled_at)}
+                  {formatSlotDate(selectedSlot.start_at)} às {formatSlotTime(selectedSlot.start_at)}
                 </div>
                 <button
                   onClick={() => setSelectedSlot(null)}

@@ -94,7 +94,7 @@ export async function bookSlot(formData: FormData) {
 
   const { data: slot, error: slotError } = await supabase
     .from('slots')
-    .select('id, scheduled_at, status')
+    .select('id, start_at, status')
     .eq('id', slotId)
     .eq('psychologist_id', psychologistId)
     .single()
@@ -133,7 +133,7 @@ export async function bookSlot(formData: FormData) {
       psychologist_id: psychologistId,
       patient_id: patientId,
       slot_id: slotId,
-      scheduled_at: slot.scheduled_at,
+      scheduled_at: slot.start_at,
       status: 'scheduled',
     })
     .select()
