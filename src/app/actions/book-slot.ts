@@ -2,7 +2,9 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { headers } from 'next/headers'
+import { redirect } from 'next/navigation'
 import { z } from 'zod'
+import { createCheckoutSession } from '@/lib/stripe'
 
 const CONSENT_VERSION = '1.0'
 
@@ -49,6 +51,7 @@ export async function bookSlot(formData: FormData) {
 
   let patientId: string
   let psychologistId: string
+  let patientEmail: string
 
   if (user) {
     const { data: existingPatient } = await supabase
@@ -60,6 +63,7 @@ export async function bookSlot(formData: FormData) {
     if (existingPatient) {
       patientId = existingPatient.id
       psychologistId = existingPatient.psychologist_id
+      patientEmail = existingPatient.email
     } else {
       return { error: 'Paciente não encontrado. Faça login novamente.' }
     }
@@ -69,7 +73,7 @@ export async function bookSlot(formData: FormData) {
 
   const { data: psychologist } = await supabase
     .from('psychologists')
-    .select('id, default_session_price')
+    .select('id, full_name, default_session_price')
     .eq('id', psychologistId)
     .single()
 
@@ -158,7 +162,7 @@ export async function bookSlot(formData: FormData) {
 
   const sessionPrice = psychologist.default_session_price || 15000
 
-  const { error: paymentError } = await supabase
+  const { data: payment, error: paymentError } = await supabase
     .from('payments')
     .insert({
       psychologist_id: psychologistId,
@@ -168,6 +172,8 @@ export async function bookSlot(formData: FormData) {
       status: 'pending',
       payment_method: 'pending',
     })
+    .select()
+    .single()
 
   if (paymentError) {
     await supabase
@@ -195,9 +201,49 @@ export async function bookSlot(formData: FormData) {
       granted: true,
     })
 
-  return { 
-    success: true, 
-    appointmentId: appointment.id,
-    scheduledAt: slot.scheduled_at
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+    
+    const checkoutSession = await createCheckoutSession({
+      appointmentId: appointment.id,
+      psychologistName: psychologist.full_name,
+      patientEmail: patientEmail,
+      amount: sessionPrice,
+      successUrl: `${baseUrl}/p/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancelUrl: `${baseUrl}/p/${(await supabase.from('psychologists').select('slug').eq('id', psychologistId).single()).data?.slug}/book?cancelled=1`,
+    })
+
+    await supabase
+      .from('payments')
+      .update({ 
+        stripe_session_id: checkoutSession.id,
+        status: 'pending_payment'
+      })
+      .eq('id', payment.id)
+
+    return { 
+      success: true, 
+      paymentUrl: checkoutSession.url,
+      appointmentId: appointment.id,
+    }
+  } catch (err: any) {
+    console.error('Erro ao criar sessão de pagamento:', err)
+    
+    await supabase
+      .from('appointments')
+      .update({ status: 'cancelled' })
+      .eq('id', appointment.id)
+    
+    await supabase
+      .from('slots')
+      .update({ status: 'available' })
+      .eq('id', slotId)
+    
+    await supabase
+      .from('payments')
+      .update({ status: 'failed' })
+      .eq('id', payment.id)
+    
+    return { error: 'Erro ao processar pagamento. Tente novamente.' }
   }
 }
