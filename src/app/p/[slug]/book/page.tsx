@@ -40,7 +40,6 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
     name: '',
     email: '',
     phone: '',
-    cpf: '',
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -59,7 +58,7 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
     if (user) {
       const { data: patient } = await supabase
         .from('patients')
-        .select('full_name, email, phone, cpf')
+        .select('full_name, email, phone')
         .eq('user_id', user.id)
         .single()
 
@@ -68,7 +67,6 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
           name: patient.full_name || '',
           email: patient.email || '',
           phone: patient.phone || '',
-          cpf: patient.cpf || '',
         })
       }
     }
@@ -158,7 +156,6 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
     formData.append('name', patientForm.name)
     formData.append('email', patientForm.email)
     formData.append('phone', patientForm.phone || '')
-    formData.append('cpf', patientForm.cpf || '')
     formData.append('consent', consentAccepted ? 'true' : 'false')
 
     const result = await bookSlot(formData)
@@ -341,19 +338,6 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
                       onChange={(e) => setPatientForm({ ...patientForm, phone: e.target.value })}
                       className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="(11) 99999-9999"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      CPF
-                    </label>
-                    <input
-                      type="text"
-                      value={patientForm.cpf}
-                      onChange={(e) => setPatientForm({ ...patientForm, cpf: e.target.value })}
-                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="000.000.000-00"
                     />
                   </div>
                 </div>
