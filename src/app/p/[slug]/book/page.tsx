@@ -59,12 +59,17 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
     if (user) {
       const { data: patient } = await supabase
         .from('patients')
-        .select('name, email, phone, cpf')
+        .select('full_name, email, phone, cpf')
         .eq('user_id', user.id)
         .single()
 
       if (patient) {
-        setPatientForm(patient)
+        setPatientForm({
+          name: patient.full_name || '',
+          email: patient.email || '',
+          phone: patient.phone || '',
+          cpf: patient.cpf || '',
+        })
       }
     }
 
