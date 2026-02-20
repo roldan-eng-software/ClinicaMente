@@ -234,10 +234,11 @@ export default function PatientDetailPage() {
           <div className="flex items-center">
             <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
               <span className="text-blue-600 text-2xl font-medium">
-              {patient.full_name.charAt(0).toUpperCase()}
-            </span>
-          </div>
-          <h1 className="text-2xl font-bold">{patient.full_name}</h1>
+                {patient.full_name.charAt(0).toUpperCase()}
+              </span>
+            </div>
+            <div className="ml-4">
+              <h1 className="text-2xl font-bold">{patient.full_name}</h1>
               <p className="text-gray-500">{patient.email}</p>
             </div>
           </div>
