@@ -2,8 +2,11 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { saveClinicData } from '@/app/actions/onboarding'
+import { saveFinancialData } from '@/app/actions/financial'
+import { saveAvailabilityData } from '@/app/actions/availability'
+import { finishOnboarding } from '@/app/actions/finish-onboarding'
 
 type Step = 'clinic' | 'financial' | 'availability' | 'confirmation'
 
@@ -26,6 +29,7 @@ export default function OnboardingPage() {
     sessionPrice: '150',
     sessionDuration: '50',
     cancellationPolicy: '24',
+    paymentMethod: 'antecipado',
     timezone: 'America/Sao_Paulo',
   })
 
@@ -129,22 +133,24 @@ export default function OnboardingPage() {
   }
 
   const handleSaveFinancial = async () => {
-    if (!validateFinancialStep()) return
+    if (!formData.sessionPrice || !formData.sessionDuration) {
+      setError('Preencha os valores obrigatórios')
+      return
+    }
 
     setSaving(true)
     setError(null)
 
-    const { error: updateError } = await supabase
-      .from('psychologists')
-      .update({
-        default_session_price: parseFloat(formData.sessionPrice),
-        session_duration_minutes: parseInt(formData.sessionDuration),
-        cancellation_policy_hours: parseInt(formData.cancellationPolicy),
-      })
-      .eq('user_id', user.id)
+    const formDataObj = new FormData()
+    formDataObj.append('sessionPrice', formData.sessionPrice)
+    formDataObj.append('sessionDuration', formData.sessionDuration)
+    formDataObj.append('cancellationPolicy', formData.cancellationPolicy)
+    formDataObj.append('paymentMethod', formData.paymentMethod)
 
-    if (updateError) {
-      setError(updateError.message)
+    const result = await saveFinancialData(formDataObj)
+
+    if (result?.error) {
+      setError(result.error)
       setSaving(false)
       return
     }
@@ -154,21 +160,25 @@ export default function OnboardingPage() {
   }
 
   const handleSaveAvailability = async () => {
+    const enabledDays = availability.filter(d => d.enabled)
+    
+    if (enabledDays.length === 0) {
+      setError('Selecione pelo menos um dia de disponibilidade')
+      return
+    }
+
     setSaving(true)
     setError(null)
 
-    const enabledDays = availability.filter(d => d.enabled)
-    
-    if (enabledDays.length > 0) {
-      const rules = enabledDays.map(d => ({
-        psychologist_id: psychologist.id,
-        day_of_week: d.day,
-        start_time: d.start,
-        end_time: d.end,
-        is_active: true,
-      }))
+    const formDataObj = new FormData()
+    formDataObj.append('availability', JSON.stringify(availability))
 
-      await supabase.from('availability_rules').insert(rules)
+    const result = await saveAvailabilityData(formDataObj)
+
+    if (result?.error) {
+      setError(result.error)
+      setSaving(false)
+      return
     }
 
     setSaving(false)
@@ -179,18 +189,16 @@ export default function OnboardingPage() {
     setSaving(true)
     setError(null)
 
-    const { error: finishError } = await supabase
-      .from('psychologists')
-      .update({ onboarding_completed: true })
-      .eq('user_id', user.id)
+    const result = await finishOnboarding()
 
-    if (finishError) {
-      setError(finishError.message)
+    if (result?.error) {
+      setError(result.error)
       setSaving(false)
       return
     }
 
-    router.push('/dashboard')
+    const publicUrl = `${window.location.origin}/p/${result?.slug}`
+    router.push(`/dashboard?welcome=true&name=${encodeURIComponent(result?.name || '')}&url=${encodeURIComponent(publicUrl)}`)
   }
 
   const dayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
@@ -471,35 +479,64 @@ export default function OnboardingPage() {
 
           {step === 'confirmation' && (
             <div className="space-y-6">
-              <h3 className="text-lg font-semibold">Revise suas configurações</h3>
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-semibold">Quase pronto!</h3>
+                <p className="text-gray-600 mt-2">Revise suas configurações antes de finalizar</p>
+              </div>
 
               <div className="bg-gray-50 p-4 rounded-lg space-y-3">
-                <div>
+                <div className="flex justify-between">
                   <span className="text-gray-500">Nome:</span>
-                  <span className="ml-2 font-medium">{formData.fullName}</span>
+                  <span className="font-medium">{formData.fullName}</span>
                 </div>
-                <div>
+                <div className="flex justify-between">
                   <span className="text-gray-500">CRP:</span>
-                  <span className="ml-2 font-medium">{formData.crp}</span>
+                  <span className="font-medium">{formData.crp}</span>
                 </div>
-                <div>
-                  <span className="text-gray-500">URL pública:</span>
-                  <span className="ml-2 font-medium">clinicamente.app/p/{formData.slug}</span>
-                </div>
-                <div>
+                <div className="flex justify-between">
                   <span className="text-gray-500">Valor da sessão:</span>
-                  <span className="ml-2 font-medium">R$ {formData.sessionPrice},00</span>
+                  <span className="font-medium">R$ {formData.sessionPrice},00</span>
                 </div>
-                <div>
+                <div className="flex justify-between">
                   <span className="text-gray-500">Duração:</span>
-                  <span className="ml-2 font-medium">{formData.sessionDuration} minutos</span>
+                  <span className="font-medium">{formData.sessionDuration} minutos</span>
                 </div>
-                <div>
+                <div className="flex justify-between">
                   <span className="text-gray-500">Disponibilidade:</span>
-                  <span className="ml-2 font-medium">
+                  <span className="font-medium text-right">
                     {availability.filter(d => d.enabled).map(d => dayNames[d.day]).join(', ')}
                   </span>
                 </div>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <label className="block text-sm font-medium text-blue-800 mb-2">
+                  Link público da sua clínica
+                </label>
+                <div className="flex items-center">
+                  <input
+                    type="text"
+                    readOnly
+                    value={`${typeof window !== 'undefined' ? window.location.origin : ''}/p/${formData.slug}`}
+                    className="flex-1 px-3 py-2 border border-blue-300 rounded-l-md bg-white text-sm"
+                  />
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(`${window.location.origin}/p/${formData.slug}`)
+                    }}
+                    className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-r-md hover:bg-blue-700"
+                  >
+                    Copiar
+                  </button>
+                </div>
+                <p className="text-xs text-blue-600 mt-2">
+                  Compartilhe este link com seus pacientes
+                </p>
               </div>
 
               <div className="flex space-x-4">
