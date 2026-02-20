@@ -4,7 +4,16 @@ import { useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { createSubscription } from '@/app/actions/upgrade'
 
-const plans = {
+const plans: Record<string, {
+  name: string
+  price: string
+  pricePeriod: string
+  description: string
+  features: { name: string; included: boolean }[]
+  cta: string
+  ctaDisabled: boolean
+  popular?: boolean
+}> = {
   free: {
     name: 'Gratuito',
     price: 'R$ 0',

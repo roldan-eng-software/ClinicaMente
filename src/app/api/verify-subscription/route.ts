@@ -30,7 +30,7 @@ export async function POST(request: Request) {
 
     const subscription = await stripe.subscriptions.retrieve(subscriptionId)
 
-    const currentPeriodEnd = new Date(subscription.current_period_end * 1000)
+    const currentPeriodEnd = new Date((subscription as any).current_period_end * 1000)
 
     const supabase = await createClient()
 

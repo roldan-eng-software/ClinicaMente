@@ -48,8 +48,9 @@ export async function middleware(request: NextRequest) {
   const publicPsychologistRoutes = pathname.startsWith('/p/')
   const isPublicRoute = publicRoutes.includes(pathname) || publicPsychologistRoutes
   const isAuthRoute = pathname === '/login' || pathname === '/signup'
+  const isApiRoute = pathname.startsWith('/api/')
 
-  if (!user && !isPublicRoute) {
+  if (!user && !isPublicRoute && !isApiRoute) {
     const redirectUrl = new URL('/login', request.url)
     redirectUrl.searchParams.set('redirect', pathname)
     return NextResponse.redirect(redirectUrl)
@@ -57,6 +58,18 @@ export async function middleware(request: NextRequest) {
 
   if (user && isAuthRoute) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
+  }
+
+  if (isApiRoute) {
+    const cronRoutes = pathname.startsWith('/api/cron/')
+    const webhookRoutes = pathname.startsWith('/api/webhooks/')
+    const verifySubscriptionRoute = pathname === '/api/verify-subscription'
+    
+    if (cronRoutes || webhookRoutes || verifySubscriptionRoute) {
+      return response
+    }
+    
+    return response
   }
 
   return response
