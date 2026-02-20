@@ -56,11 +56,15 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
     setUser(user)
 
     if (user) {
-      const { data: patient } = await supabase
+      const { data: patient, error: patientError } = await supabase
         .from('patients')
         .select('full_name, email, phone')
         .eq('user_id', user.id)
-        .single()
+        .maybeSingle()
+
+      if (patientError) {
+        console.error('Erro ao buscar paciente:', patientError)
+      }
 
       if (patient) {
         setPatientForm({

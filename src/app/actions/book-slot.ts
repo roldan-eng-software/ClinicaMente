@@ -55,11 +55,15 @@ export async function bookSlot(formData: FormData) {
   let patientEmail: string
 
   if (user) {
-    const { data: existingPatient } = await supabase
+    const { data: existingPatient, error: patientError } = await supabase
       .from('patients')
       .select('id, psychologist_id, email')
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle()
+
+    if (patientError) {
+      console.error('Erro ao buscar paciente:', patientError)
+    }
 
     if (existingPatient) {
       patientId = existingPatient.id
