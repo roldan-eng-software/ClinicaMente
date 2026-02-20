@@ -3,7 +3,6 @@
 import { useState, Suspense } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
-import Link from 'next/link'
 
 function LoginForm() {
   const [email, setEmail] = useState('')
@@ -20,7 +19,7 @@ function LoginForm() {
     setLoading(true)
     setError(null)
 
-    const { error: loginError } = await supabase.auth.signInWithPassword({
+    const { data: sessionData, error: loginError } = await supabase.auth.signInWithPassword({
       email,
       password,
     })
@@ -31,7 +30,21 @@ function LoginForm() {
       return
     }
 
-    router.push('/dashboard')
+    if (sessionData?.user) {
+      const { data: psychologist } = await supabase
+        .from('psychologists')
+        .select('onboarding_completed')
+        .eq('user_id', sessionData.user.id)
+        .single()
+
+      if (psychologist?.onboarding_completed === false) {
+        router.push('/onboarding')
+      } else {
+        router.push('/dashboard')
+      }
+    } else {
+      router.push('/dashboard')
+    }
   }
 
   return (
@@ -88,9 +101,9 @@ function LoginForm() {
 
       <p className="mt-4 text-center text-sm text-gray-600">
         Não tem uma conta?{' '}
-        <Link href="/signup" className="text-blue-600 hover:text-blue-700">
+        <a href="/signup" className="text-blue-600 hover:text-blue-700">
           Cadastrar
-        </Link>
+        </a>
       </p>
     </>
   )

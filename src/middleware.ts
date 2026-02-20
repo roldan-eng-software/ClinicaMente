@@ -44,7 +44,7 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
-  const publicRoutes = ['/', '/login', '/signup', '/forgot-password']
+  const publicRoutes = ['/', '/login', '/signup', '/forgot-password', '/onboarding']
   const publicPsychologistRoutes = pathname.startsWith('/p/')
   const isPublicRoute = publicRoutes.includes(pathname) || publicPsychologistRoutes
   const isAuthRoute = pathname === '/login' || pathname === '/signup'
