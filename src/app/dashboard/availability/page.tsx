@@ -93,13 +93,20 @@ export default function AvailabilityPage() {
       }
     }
 
-    await supabase
+    const { error: deleteError } = await supabase
       .from('availability_rules')
       .delete()
       .eq('psychologist_id', psychologist.id)
 
+    if (deleteError) {
+      console.error('Erro ao deletar regras:', deleteError)
+      alert('Erro ao salvar disponibilidade. Tente novamente.')
+      setSaving(false)
+      return
+    }
+
     if (activeRules.length > 0) {
-      await supabase
+      const { error: insertError } = await supabase
         .from('availability_rules')
         .insert(activeRules.map(r => ({
           psychologist_id: psychologist.id,
@@ -108,6 +115,13 @@ export default function AvailabilityPage() {
           end_time: r.end_time,
           is_active: r.is_active,
         })))
+
+      if (insertError) {
+        console.error('Erro ao inserir regras:', insertError)
+        alert('Erro ao salvar disponibilidade. Tente novamente.')
+        setSaving(false)
+        return
+      }
     }
 
     await regenerateSlots()
@@ -123,12 +137,17 @@ export default function AvailabilityPage() {
     const futureDate = new Date(today)
     futureDate.setDate(futureDate.getDate() + 60)
 
-    const { data: existingSlots } = await supabase
+    const { data: existingSlots, error: fetchError } = await supabase
       .from('slots')
-      .select('id, scheduled_at, status')
+      .select('id, start_at, status')
       .eq('psychologist_id', psychologist.id)
-      .gte('scheduled_at', today.toISOString())
+      .gte('start_at', today.toISOString())
       .eq('status', 'available')
+
+    if (fetchError) {
+      console.error('Erro ao buscar slots existentes:', fetchError)
+      return
+    }
 
     const slotsToDelete = existingSlots?.map(s => s.id) || []
 
@@ -139,11 +158,16 @@ export default function AvailabilityPage() {
         .in('id', slotsToDelete)
     }
 
-    const { data: activeRules } = await supabase
+    const { data: activeRules, error: rulesError } = await supabase
       .from('availability_rules')
       .select('*')
       .eq('psychologist_id', psychologist.id)
       .eq('is_active', true)
+
+    if (rulesError) {
+      console.error('Erro ao buscar regras ativas:', rulesError)
+      return
+    }
 
     const { data: psychologistData } = await supabase
       .from('psychologists')
@@ -153,7 +177,7 @@ export default function AvailabilityPage() {
 
     const sessionDuration = psychologistData?.session_duration_minutes || 50
 
-    const newSlots: { scheduled_at: Date; psychologist_id: string; status: string }[] = []
+    const newSlots: { start_at: Date; end_at: Date; psychologist_id: string; status: string }[] = []
 
     for (const rule of activeRules || []) {
       const [startHour, startMin] = rule.start_time.split(':').map(Number)
@@ -172,8 +196,12 @@ export default function AvailabilityPage() {
             const slotDate = new Date(currentDate)
             slotDate.setHours(Math.floor(slotStartMinutes / 60), slotStartMinutes % 60, 0, 0)
             
+            const slotEndDate = new Date(slotDate)
+            slotEndDate.setMinutes(slotEndDate.getMinutes() + sessionDuration)
+            
             newSlots.push({
-              scheduled_at: slotDate,
+              start_at: slotDate,
+              end_at: slotEndDate,
               psychologist_id: psychologist.id,
               status: 'available',
             })
@@ -239,8 +267,8 @@ export default function AvailabilityPage() {
       .select('id')
       .eq('psychologist_id', psychologist.id)
       .eq('status', 'available')
-      .gte('scheduled_at', start.toISOString())
-      .lt('scheduled_at', end.toISOString())
+      .gte('start_at', start.toISOString())
+      .lt('start_at', end.toISOString())
 
     if (slotsToCancel && slotsToCancel.length > 0) {
       await supabase
