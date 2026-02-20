@@ -165,6 +165,11 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
       return
     }
 
+    if (result?.paymentUrl) {
+      window.location.href = result.paymentUrl
+      return
+    }
+
     router.push(`/p/${slug}/success?appointment=1`)
   }
 
