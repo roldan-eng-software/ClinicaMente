@@ -29,6 +29,16 @@ interface Collaborator {
   specialty: string | null
   bio: string | null
   is_active: boolean
+  appointment_types?: string[]
+}
+
+interface CollaboratorAvailability {
+  id?: string
+  collaborator_id: string
+  day_of_week: number
+  start_time: string
+  end_time: string
+  is_active: boolean
 }
 
 interface ClinicSettings {
@@ -96,6 +106,8 @@ export default function SettingsPage() {
     specialty: '',
     bio: '',
   })
+  const [collaboratorAvailabilityModal, setCollaboratorAvailabilityModal] = useState<{ open: boolean; collaborator?: Collaborator }>({ open: false })
+  const [collaboratorAvailability, setCollaboratorAvailability] = useState<CollaboratorAvailability[]>([])
 
   const [advancedForm, setAdvancedForm] = useState({
     appointmentTypes: ['presencial', 'online'],
@@ -276,6 +288,145 @@ export default function SettingsPage() {
     }
   }
 
+  async function loadCollaboratorAvailability(collaboratorId: string) {
+    const { data } = await supabase
+      .from('collaborator_availability_rules')
+      .select('*')
+      .eq('collaborator_id', collaboratorId)
+      .order('day_of_week')
+
+    if (data && data.length > 0) {
+      setCollaboratorAvailability(data)
+    } else {
+      const defaultAvailability = [0, 1, 2, 3, 4, 5, 6].map(day => ({
+        collaborator_id: collaboratorId,
+        day_of_week: day,
+        start_time: '09:00',
+        end_time: '12:00',
+        is_active: false,
+      }))
+      setCollaboratorAvailability(defaultAvailability)
+    }
+  }
+
+  async function saveCollaboratorAvailability() {
+    if (!collaboratorAvailabilityModal.collaborator) return
+
+    setSaving(true)
+    setMessage(null)
+
+    const activeRules = collaboratorAvailability.filter(r => r.is_active)
+    
+    for (const rule of activeRules) {
+      const [startHour] = rule.start_time.split(':').map(Number)
+      const [endHour] = rule.end_time.split(':').map(Number)
+      
+      if (startHour >= endHour) {
+        setMessage({ type: 'error', text: `Horário final deve ser maior que inicial para ${dayNames[rule.day_of_week]}` })
+        setSaving(false)
+        return
+      }
+    }
+
+    const collaboratorId = collaboratorAvailabilityModal.collaborator.id
+
+    await supabase
+      .from('collaborator_availability_rules')
+      .delete()
+      .eq('collaborator_id', collaboratorId)
+
+    if (activeRules.length > 0) {
+      await supabase
+        .from('collaborator_availability_rules')
+        .insert(activeRules.map(r => ({
+          collaborator_id: collaboratorId,
+          day_of_week: r.day_of_week,
+          start_time: r.start_time,
+          end_time: r.end_time,
+          is_active: r.is_active,
+        })))
+    }
+
+    await generateCollaboratorSlots(collaboratorId, activeRules)
+
+    setMessage({ type: 'success', text: 'Disponibilidade salva com sucesso!' })
+    setCollaboratorAvailabilityModal({ open: false })
+    setSaving(false)
+  }
+
+  async function generateCollaboratorSlots(collaboratorId: string, rules: CollaboratorAvailability[]) {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    
+    const futureDate = new Date(today)
+    futureDate.setDate(futureDate.getDate() + 60)
+
+    const { data: existingSlots } = await supabase
+      .from('slots')
+      .select('id')
+      .eq('collaborator_id', collaboratorId)
+      .gte('start_at', today.toISOString())
+
+    if (existingSlots && existingSlots.length > 0) {
+      await supabase
+        .from('slots')
+        .delete()
+        .in('id', existingSlots.map(s => s.id))
+    }
+
+    const { data: psychologistData } = await supabase
+      .from('psychologists')
+      .select('session_duration_minutes')
+      .eq('id', psychologist.id)
+      .single()
+
+    const sessionDuration = psychologistData?.session_duration_minutes || 50
+
+    const newSlots: { start_at: Date; end_at: Date; psychologist_id: string; collaborator_id: string; status: string }[] = []
+
+    for (const rule of rules) {
+      const [startHour, startMin] = rule.start_time.split(':').map(Number)
+      const [endHour, endMin] = rule.end_time.split(':').map(Number)
+      
+      const startMinutes = startHour * 60 + startMin
+      const endMinutes = endHour * 60 + endMin
+      
+      let currentDate = new Date(today)
+      
+      while (currentDate <= futureDate) {
+        if (currentDate.getDay() === rule.day_of_week) {
+          let slotStartMinutes = startMinutes
+          
+          while (slotStartMinutes + sessionDuration <= endMinutes) {
+            const slotDate = new Date(currentDate)
+            slotDate.setHours(Math.floor(slotStartMinutes / 60), slotStartMinutes % 60, 0, 0)
+            
+            const slotEndDate = new Date(slotDate)
+            slotEndDate.setMinutes(slotEndDate.getMinutes() + sessionDuration)
+            
+            newSlots.push({
+              start_at: slotDate,
+              end_at: slotEndDate,
+              psychologist_id: psychologist.id,
+              collaborator_id: collaboratorId,
+              status: 'available',
+            })
+            
+            slotStartMinutes += sessionDuration
+          }
+        }
+        
+        currentDate.setDate(currentDate.getDate() + 1)
+      }
+    }
+
+    if (newSlots.length > 0) {
+      await supabase
+        .from('slots')
+        .insert(newSlots)
+    }
+  }
+
   async function handleSaveAdvanced() {
     setSaving(true)
     setMessage(null)
@@ -319,6 +470,8 @@ export default function SettingsPage() {
     { value: 'patient', label: 'Paciente' },
     { value: 'type', label: 'Tipo' },
   ]
+
+  const dayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
 
   if (loading) {
     return (
@@ -576,6 +729,18 @@ export default function SettingsPage() {
                           <td className="py-3 px-4 text-sm text-gray-500">{collaborator.specialty || '-'}</td>
                           <td className="py-3 px-4 text-right">
                             <button
+                              onClick={async () => {
+                                await loadCollaboratorAvailability(collaborator.id)
+                                setCollaboratorAvailabilityModal({ open: true, collaborator })
+                              }}
+                              className="p-1 text-green-600 hover:text-green-800"
+                              title="Configurar disponibilidade"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                            </button>
+                            <button
                               onClick={() => {
                                 setCollaboratorForm({
                                   fullName: collaborator.full_name,
@@ -587,7 +752,7 @@ export default function SettingsPage() {
                                 })
                                 setCollaboratorModal({ open: true, collaborator })
                               }}
-                              className="p-1 text-gray-500 hover:text-blue-600"
+                              className="p-1 text-gray-500 hover:text-blue-600 ml-2"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -971,6 +1136,107 @@ export default function SettingsPage() {
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 text-sm"
               >
                 {saving ? 'Salvando...' : 'Salvar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {collaboratorAvailabilityModal.open && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg font-semibold mb-4">
+              Configurar Disponibilidade - {collaboratorAvailabilityModal.collaborator?.full_name}
+            </h3>
+            
+            <p className="text-sm text-gray-500 mb-4">
+              Configure os dias da semana e horários de atendimento deste colaborador
+            </p>
+
+            <div className="space-y-3 mb-6">
+              {collaboratorAvailability.map((rule) => (
+                <div
+                  key={rule.day_of_week}
+                  className={`flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 rounded-lg border-2 gap-3 ${
+                    rule.is_active ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-gray-50'
+                  }`}
+                >
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={rule.is_active}
+                      onChange={(e) => {
+                        const newAvailability = [...collaboratorAvailability]
+                        newAvailability[rule.day_of_week] = { ...rule, is_active: e.target.checked }
+                        setCollaboratorAvailability(newAvailability)
+                      }}
+                      className="w-4 h-4 text-green-600 rounded"
+                    />
+                    <span className={`ml-2 sm:ml-3 font-medium text-sm ${rule.is_active ? 'text-gray-900' : 'text-gray-500'}`}>
+                      {dayNames[rule.day_of_week]}
+                    </span>
+                  </div>
+
+                  {rule.is_active && (
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                      <select
+                        value={rule.start_time}
+                        onChange={(e) => {
+                          const newAvailability = [...collaboratorAvailability]
+                          newAvailability[rule.day_of_week] = { ...rule, start_time: e.target.value }
+                          setCollaboratorAvailability(newAvailability)
+                        }}
+                        className="border rounded-lg px-2 sm:px-3 py-1 text-xs sm:text-sm"
+                      >
+                        {Array.from({ length: 24 }, (_, i) => {
+                          const hour = i.toString().padStart(2, '0')
+                          return `${hour}:00`
+                        }).map(time => (
+                          <option key={time} value={time}>{time}</option>
+                        ))}
+                      </select>
+                      <span className="text-gray-400 text-xs">às</span>
+                      <select
+                        value={rule.end_time}
+                        onChange={(e) => {
+                          const newAvailability = [...collaboratorAvailability]
+                          newAvailability[rule.day_of_week] = { ...rule, end_time: e.target.value }
+                          setCollaboratorAvailability(newAvailability)
+                        }}
+                        className="border rounded-lg px-2 sm:px-3 py-1 text-xs sm:text-sm"
+                      >
+                        {Array.from({ length: 24 }, (_, i) => {
+                          const hour = i.toString().padStart(2, '0')
+                          return `${hour}:00`
+                        }).map(time => (
+                          <option key={time} value={time}>{time}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {message?.type === 'success' && (
+              <div className="mb-4 p-3 bg-green-50 text-green-700 rounded-lg text-sm">
+                {message.text}
+              </div>
+            )}
+            
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => setCollaboratorAvailabilityModal({ open: false })}
+                className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={saveCollaboratorAvailability}
+                disabled={saving}
+                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 text-sm"
+              >
+                {saving ? 'Salvando...' : 'Salvar Disponibilidade'}
               </button>
             </div>
           </div>
