@@ -9,6 +9,7 @@ import { bookSlot } from '@/app/actions/book-slot'
 interface Slot {
   id: string
   start_at: string
+  appointment_type?: string
 }
 
 interface Psychologist {
@@ -31,15 +32,23 @@ interface Collaborator {
   bio: string
 }
 
-interface Step {
-  id: number
-  title: string
+interface Appointment {
+  id: string
+  status: string
+  slot_id: string
+  slots: {
+    start_at: string
+    appointment_type: string
+  }[]
+  psychologists?: {
+    full_name: string
+  }[]
 }
 
-const STEPS: Step[] = [
-  { id: 1, title: 'Profissional' },
-  { id: 2, title: 'Horário' },
-  { id: 3, title: 'Seus Dados' },
+const STEPS = [
+  { id: 1, title: 'Login' },
+  { id: 2, title: 'Profissional' },
+  { id: 3, title: 'Horário' },
   { id: 4, title: 'Confirmar' },
 ]
 
@@ -55,10 +64,12 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
   const [selectedCollaboratorId, setSelectedCollaboratorId] = useState<string | null>(null)
   const [slots, setSlots] = useState<Slot[]>([])
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null)
+  const [selectedAppointmentType, setSelectedAppointmentType] = useState<'presencial' | 'videoconferencia'>('presencial')
   const [currentStep, setCurrentStep] = useState(1)
   const [checkingSlot, setCheckingSlot] = useState(false)
   
   const [user, setUser] = useState<any>(null)
+  const [patient, setPatient] = useState<any>(null)
   const [patientForm, setPatientForm] = useState({
     name: '',
     email: '',
@@ -80,9 +91,17 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
   const [authLoading, setAuthLoading] = useState(false)
   const [authError, setAuthError] = useState<string | null>(null)
 
+  const [appointmentHistory, setAppointmentHistory] = useState<Appointment[]>([])
+
   useEffect(() => {
     checkAuthAndLoadData()
-  }, [slug, selectedProfessional, selectedCollaboratorId])
+  }, [slug])
+
+  useEffect(() => {
+    if (psychologist) {
+      loadSlots()
+    }
+  }, [psychologist, selectedProfessional, selectedCollaboratorId, selectedAppointmentType])
 
   async function checkAuthAndLoadData() {
     setLoading(true)
@@ -90,27 +109,63 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
     const { data: { user } } = await supabase.auth.getUser()
     setUser(user)
 
-    if (user) {
-      const { data: patient } = await supabase
-        .from('patients')
-        .select('full_name, email, phone')
-        .eq('user_id', user.id)
-        .maybeSingle()
-
-      if (patient) {
-        setPatientForm({
-          name: patient.full_name || '',
-          email: patient.email || '',
-          phone: patient.phone || '',
-        })
-      }
-    }
-
     await loadPsychologist()
     await loadCollaborators()
-    await loadSlots()
+    
+    if (user) {
+      await loadPatientData()
+      await loadAppointmentHistory()
+    }
     
     setLoading(false)
+  }
+
+  async function loadPatientData() {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const psychologistId = psychologist?.id
+    if (!psychologistId) return
+
+    const { data: patientData } = await supabase
+      .from('patients')
+      .select('id, full_name, email, phone, user_id')
+      .eq('user_id', user.id)
+      .eq('psychologist_id', psychologistId)
+      .maybeSingle()
+
+    if (patientData) {
+      setPatient(patientData)
+      setPatientForm({
+        name: patientData.full_name || '',
+        email: patientData.email || '',
+        phone: patientData.phone || '',
+      })
+    }
+  }
+
+  async function loadAppointmentHistory() {
+    const psychologistId = psychologist?.id
+    if (!psychologistId || !patient?.id) return
+
+    const { data } = await supabase
+      .from('appointments')
+      .select(`
+        id,
+        status,
+        slot_id,
+        slots(start_at, appointment_type),
+        psychologists(full_name)
+      `)
+      .eq('patient_id', patient.id)
+      .eq('psychologist_id', psychologistId)
+      .in('status', ['scheduled', 'completed', 'cancelled'])
+      .order('created_at', { ascending: false })
+      .limit(10)
+
+    if (data) {
+      setAppointmentHistory(data as any)
+    }
   }
 
   async function loadPsychologist() {
@@ -154,7 +209,7 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
 
     let query = supabase
       .from('slots')
-      .select('id, start_at')
+      .select('id, start_at, appointment_type')
       .eq('psychologist_id', psychologist.id)
       .eq('status', 'available')
       .gte('start_at', today.toISOString())
@@ -169,23 +224,26 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
 
     const { data } = await query
 
-    setSlots(data || [])
+    const filteredSlots = (data || []).filter(slot => {
+      if (selectedAppointmentType === 'videoconferencia') {
+        return slot.appointment_type === 'videoconferencia' || !slot.appointment_type
+      }
+      return true
+    })
+
+    setSlots(filteredSlots)
   }
 
   function selectProfessional(type: 'psychologist' | 'collaborator', collaboratorId?: string) {
     setSelectedProfessional(type)
     setSelectedCollaboratorId(collaboratorId || null)
     setSelectedSlot(null)
-    setCurrentStep(2)
+    setCurrentStep(3)
   }
 
   function selectSlot(slot: Slot) {
     setSelectedSlot(slot)
-    if (user) {
-      setCurrentStep(4)
-    } else {
-      setCurrentStep(3)
-    }
+    setCurrentStep(4)
   }
 
   async function handleAuth() {
@@ -223,7 +281,7 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
         setSuccessMessage('Conta criada! Verifique seu email para confirmar.')
         setShowAuthModal(false)
         await checkAuthAndLoadData()
-        setCurrentStep(4)
+        setCurrentStep(2)
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({
           email: authForm.email,
@@ -234,7 +292,7 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
 
         setShowAuthModal(false)
         await checkAuthAndLoadData()
-        setCurrentStep(4)
+        setCurrentStep(2)
       }
     } catch (err: any) {
       setAuthError(err.message || 'Erro ao processar')
@@ -255,6 +313,7 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
     formData.append('email', patientForm.email)
     formData.append('phone', patientForm.phone || '')
     formData.append('consent', consentAccepted ? 'true' : 'false')
+    formData.append('appointmentType', selectedAppointmentType)
 
     const result = await bookSlot(formData)
 
@@ -293,6 +352,16 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
     })
   }
 
+  const formatFullDate = (dateStr: string) => {
+    const date = new Date(dateStr)
+    return date.toLocaleDateString('pt-BR', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    })
+  }
+
   const groupSlotsByDate = (slots: Slot[]) => {
     const grouped: Record<string, Slot[]> = {}
     
@@ -309,6 +378,10 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
 
   const groupedSlots = groupSlotsByDate(slots)
 
+  const selectedProfessionalName = selectedProfessional === 'psychologist' 
+    ? psychologist?.full_name 
+    : collaborators.find(c => c.id === selectedCollaboratorId)?.full_name
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -316,10 +389,6 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
       </div>
     )
   }
-
-  const selectedProfessionalName = selectedProfessional === 'psychologist' 
-    ? psychologist?.full_name 
-    : collaborators.find(c => c.id === selectedCollaboratorId)?.full_name
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -378,7 +447,133 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
           )}
 
           {currentStep === 1 && (
-            <div className="space-y-4">
+            <div className="space-y-6">
+              <h2 className="text-lg font-semibold mb-4">Identifique-se</h2>
+              <p className="text-gray-600 text-sm mb-4">
+                Faça login ou cadastre-se para continuar
+              </p>
+
+              {!showAuthModal ? (
+                <div className="space-y-4">
+                  <button
+                    onClick={() => { setAuthMode('login'); setShowAuthModal(true) }}
+                    className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    Já tenho conta - Entrar
+                  </button>
+                  <button
+                    onClick={() => { setAuthMode('signup'); setShowAuthModal(true) }}
+                    className="w-full py-3 bg-white border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50"
+                  >
+                    Criar conta nova
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {authError && (
+                    <div className="p-3 bg-red-50 text-red-700 rounded-lg text-sm">
+                      {authError}
+                    </div>
+                  )}
+
+                  {authMode === 'signup' && (
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Nome completo
+                        </label>
+                        <input
+                          type="text"
+                          value={authForm.name}
+                          onChange={(e) => setAuthForm({ ...authForm, name: e.target.value })}
+                          className="w-full px-4 py-2 border rounded-lg"
+                          placeholder="Seu nome completo"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Telefone (para WhatsApp)
+                        </label>
+                        <input
+                          type="tel"
+                          value={authForm.phone}
+                          onChange={(e) => setAuthForm({ ...authForm, phone: e.target.value })}
+                          className="w-full px-4 py-2 border rounded-lg"
+                          placeholder="(11) 99999-9999"
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Email
+                    </label>
+                    <input
+                      type="email"
+                      value={authForm.email}
+                      onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })}
+                      className="w-full px-4 py-2 border rounded-lg"
+                      placeholder="seu@email.com"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Senha
+                    </label>
+                    <input
+                      type="password"
+                      value={authForm.password}
+                      onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
+                      className="w-full px-4 py-2 border rounded-lg"
+                      placeholder="••••••••"
+                    />
+                  </div>
+
+                  <button
+                    onClick={handleAuth}
+                    disabled={authLoading || !authForm.email || !authForm.password || (authMode === 'signup' && !authForm.name)}
+                    className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {authLoading 
+                      ? 'Processando...' 
+                      : authMode === 'signup' 
+                        ? 'Criar conta' 
+                        : 'Entrar'}
+                  </button>
+
+                  <div className="text-center text-sm text-gray-600">
+                    {authMode === 'signup' ? (
+                      <>
+                        Já tem conta?{' '}
+                        <button onClick={() => setAuthMode('login')} className="text-blue-600 hover:underline">
+                          Entre aqui
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        Não tem conta?{' '}
+                        <button onClick={() => setAuthMode('signup')} className="text-blue-600 hover:underline">
+                          Cadastre-se
+                        </button>
+                      </>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={() => setShowAuthModal(false)}
+                    className="w-full py-2 text-gray-500 hover:text-gray-700"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {currentStep === 2 && user && (
+            <div className="space-y-6">
               <h2 className="text-lg font-semibold mb-4">Escolha o profissional</h2>
               
               <button
@@ -427,10 +622,10 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
             </div>
           )}
 
-          {currentStep === 2 && (
+          {currentStep === 3 && (
             <div className="space-y-4">
               <button
-                onClick={() => setCurrentStep(1)}
+                onClick={() => setCurrentStep(2)}
                 className="text-blue-600 hover:underline text-sm mb-4"
               >
                 ← Escolher outro profissional
@@ -440,9 +635,48 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
                 Horários disponíveis com {selectedProfessionalName}
               </h2>
 
+              <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tipo de atendimento
+                </label>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setSelectedAppointmentType('presencial')}
+                    className={`flex-1 py-3 px-4 rounded-lg border-2 transition-colors ${
+                      selectedAppointmentType === 'presencial'
+                        ? 'border-blue-600 bg-blue-50 text-blue-700'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-2">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      <span className="font-medium">Presencial</span>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setSelectedAppointmentType('videoconferencia')}
+                    className={`flex-1 py-3 px-4 rounded-lg border-2 transition-colors ${
+                      selectedAppointmentType === 'videoconferencia'
+                        ? 'border-blue-600 bg-blue-50 text-blue-700'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-2">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                      <span className="font-medium">Vídeo</span>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
               {groupedSlots.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
-                  Nenhum horário disponível no momento
+                  Nenhum horário disponível para este tipo de atendimento
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -474,10 +708,10 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
             </div>
           )}
 
-          {currentStep === 3 && (
+          {currentStep === 4 && (
             <div className="space-y-6">
               <button
-                onClick={() => setCurrentStep(2)}
+                onClick={() => setCurrentStep(3)}
                 className="text-blue-600 hover:underline text-sm mb-4"
               >
                 ← Escolher outro horário
@@ -486,102 +720,25 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <div className="text-sm text-blue-600 mb-1">Horário selecionado</div>
                 <div className="text-lg font-semibold text-blue-900">
-                  {selectedSlot && formatSlotDate(selectedSlot.start_at)} às {selectedSlot && formatSlotTime(selectedSlot.start_at)}
+                  {selectedSlot && formatFullDate(selectedSlot.start_at)} às {selectedSlot && formatSlotTime(selectedSlot.start_at)}
                 </div>
-                <div className="text-sm text-blue-700">com {selectedProfessionalName}</div>
-              </div>
-
-              {!user ? (
-                <div className="space-y-4">
-                  <h2 className="text-lg font-semibold mb-4">Identificação</h2>
-                  <p className="text-gray-600 text-sm mb-4">
-                    Já tem conta?{' '}
-                    <button onClick={() => { setAuthMode('login'); setShowAuthModal(true) }} className="text-blue-600 hover:underline">
-                      Entre aqui
-                    </button>
-                  </p>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Nome completo *
-                    </label>
-                    <input
-                      type="text"
-                      value={patientForm.name}
-                      onChange={(e) => setPatientForm({ ...patientForm, name: e.target.value })}
-                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Email *
-                    </label>
-                    <input
-                      type="email"
-                      value={patientForm.email}
-                      onChange={(e) => setPatientForm({ ...patientForm, email: e.target.value })}
-                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Telefone
-                    </label>
-                    <input
-                      type="tel"
-                      value={patientForm.phone}
-                      onChange={(e) => setPatientForm({ ...patientForm, phone: e.target.value })}
-                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="(11) 99999-9999"
-                    />
-                  </div>
-
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <label className="flex items-start cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={consentAccepted}
-                        onChange={(e) => setConsentAccepted(e.target.checked)}
-                        className="w-5 h-5 text-blue-600 mt-0.5 mr-3"
-                      />
-                      <span className="text-sm text-gray-600">
-                        Eu li e concordo com a{' '}
-                        <a href="/privacy" target="_blank" className="text-blue-600 hover:underline">Política de Privacidade</a>
-                        {' '}e os{' '}
-                        <a href="/terms" target="_blank" className="text-blue-600 hover:underline">Termos de Uso</a>.
-                      </span>
-                    </label>
-                  </div>
-
-                  <button
-                    onClick={() => { setAuthMode('signup'); setShowAuthModal(true) }}
-                    disabled={!patientForm.name || !patientForm.email || !consentAccepted}
-                    className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                  >
-                    Criar conta e continuar
-                  </button>
-                </div>
-              ) : null}
-            </div>
-          )}
-
-          {currentStep === 4 && user && (
-            <div className="space-y-6">
-              <button
-                onClick={() => setCurrentStep(2)}
-                className="text-blue-600 hover:underline text-sm mb-4"
-              >
-                ← Escolher outro horário
-              </button>
-
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="text-sm text-blue-600 mb-1">Horário selecionado</div>
-                <div className="text-lg font-semibold text-blue-900">
-                  {selectedSlot && formatSlotDate(selectedSlot.start_at)} às {selectedSlot && formatSlotTime(selectedSlot.start_at)}
+                <div className="text-sm text-blue-700 flex items-center gap-2 mt-1">
+                  {selectedAppointmentType === 'videoconferencia' ? (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                      Videoconferência
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      Presencial
+                    </>
+                  )}
                 </div>
                 <div className="text-sm text-blue-700">com {selectedProfessionalName}</div>
               </div>
@@ -618,7 +775,7 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Telefone
+                      Telefone (WhatsApp) *
                     </label>
                     <input
                       type="tel"
@@ -626,6 +783,7 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
                       onChange={(e) => setPatientForm({ ...patientForm, phone: e.target.value })}
                       className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="(11) 99999-9999"
+                      required
                     />
                   </div>
                 </div>
@@ -641,16 +799,16 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
                   />
                   <span className="text-sm text-gray-600">
                     Eu li e concordo com a{' '}
-                    <a href="/privacy" target="_blank" className="text-blue-600 hover:underline">Política de Privacidade</a>
+                    <a href="/minha-conta/privacidade" target="_blank" className="text-blue-600 hover:underline">Política de Privacidade</a>
                     {' '}e os{' '}
-                    <a href="/terms" target="_blank" className="text-blue-600 hover:underline">Termos de Uso</a>.
+                    <a href="/minha-conta/privacidade" target="_blank" className="text-blue-600 hover:underline">Termos de Uso</a>.
                   </span>
                 </label>
               </div>
 
               <button
                 onClick={handleSubmitPatient}
-                disabled={saving || !patientForm.name || !patientForm.email || !consentAccepted}
+                disabled={saving || !patientForm.name || !patientForm.email || !patientForm.phone || !consentAccepted}
                 className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
               >
                 {saving ? 'Agendando...' : 'Confirmar agendamento'}
@@ -658,113 +816,35 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
             </div>
           )}
         </div>
-      </div>
 
-      {showAuthModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4">
-              {authMode === 'signup' ? 'Criar conta' : 'Entrar'}
-            </h3>
-
-            {authError && (
-              <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg text-sm">
-                {authError}
-              </div>
-            )}
-
-            <div className="space-y-4">
-              {authMode === 'signup' && (
-                <>
+        {appointmentHistory.length > 0 && currentStep >= 2 && (
+          <div className="mt-6 bg-white rounded-lg shadow-md p-6">
+            <h3 className="text-lg font-semibold mb-4">Seu histórico de consultas</h3>
+            <div className="space-y-3">
+              {appointmentHistory.slice(0, 5).map((apt) => (
+                <div key={apt.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Nome completo
-                    </label>
-                    <input
-                      type="text"
-                      value={authForm.name}
-                      onChange={(e) => setAuthForm({ ...authForm, name: e.target.value })}
-                      className="w-full px-4 py-2 border rounded-lg"
-                    />
+                    <div className="text-sm font-medium text-gray-900">
+                      {apt.slots?.[0] && formatFullDate(apt.slots[0].start_at)}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {apt.psychologists?.[0]?.full_name}
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Telefone
-                    </label>
-                    <input
-                      type="tel"
-                      value={authForm.phone}
-                      onChange={(e) => setAuthForm({ ...authForm, phone: e.target.value })}
-                      className="w-full px-4 py-2 border rounded-lg"
-                    />
-                  </div>
-                </>
-              )}
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  value={authForm.email}
-                  onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })}
-                  className="w-full px-4 py-2 border rounded-lg"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Senha
-                </label>
-                <input
-                  type="password"
-                  value={authForm.password}
-                  onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
-                  className="w-full px-4 py-2 border rounded-lg"
-                />
-              </div>
-
-              <button
-                onClick={handleAuth}
-                disabled={authLoading || !authForm.email || !authForm.password || (authMode === 'signup' && !authForm.name)}
-                className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-              >
-                {authLoading 
-                  ? 'Processando...' 
-                  : authMode === 'signup' 
-                    ? 'Criar conta' 
-                    : 'Entrar'}
-              </button>
-
-              <div className="text-center text-sm text-gray-600">
-                {authMode === 'signup' ? (
-                  <>
-                    Já tem conta?{' '}
-                    <button onClick={() => setAuthMode('login')} className="text-blue-600 hover:underline">
-                      Entre aqui
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    Não tem conta?{' '}
-                    <button onClick={() => setAuthMode('signup')} className="text-blue-600 hover:underline">
-                      Cadastre-se
-                    </button>
-                  </>
-                )}
-              </div>
-
-              <button
-                onClick={() => setShowAuthModal(false)}
-                className="w-full py-2 text-gray-500 hover:text-gray-700"
-              >
-                Cancelar
-              </button>
+                  <span className={`px-2 py-1 text-xs rounded-full ${
+                    apt.status === 'scheduled' ? 'bg-blue-100 text-blue-700' :
+                    apt.status === 'completed' ? 'bg-green-100 text-green-700' :
+                    'bg-red-100 text-red-700'
+                  }`}>
+                    {apt.status === 'scheduled' ? 'Agendada' :
+                     apt.status === 'completed' ? 'Concluída' : 'Cancelada'}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }

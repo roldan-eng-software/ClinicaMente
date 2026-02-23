@@ -12,6 +12,7 @@ const CONSENT_VERSION = '1.0'
 const bookSlotSchema = z.object({
   slotId: z.string().min(1, 'Slot ID é obrigatório'),
   consent: z.boolean().refine(val => val === true, { message: 'Você deve aceitar os termos para continuar' }),
+  appointmentType: z.enum(['presencial', 'videoconferencia']).optional(),
   patientData: z.object({
     name: z.string().min(1, 'Nome é obrigatório'),
     email: z.string().email('Email inválido'),
@@ -19,6 +20,45 @@ const bookSlotSchema = z.object({
     cpf: z.string().optional(),
   }),
 })
+
+async function sendWhatsAppNotification(phone: string, message: string) {
+  const whatsappApiKey = process.env.WHATSAPP_API_KEY
+  
+  if (!whatsappApiKey || whatsappApiKey === 'SUA_WHATSAPP_API_KEY_AQUI') {
+    console.log('WhatsApp API não configurada. Mensagem:', message)
+    return
+  }
+
+  const cleanPhone = phone.replace(/\D/g, '')
+  const whatsappNumber = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`
+  
+  try {
+    const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${process.env.TWILIO_ACCOUNT_SID}/Messages.json`, {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Basic ' + Buffer.from(`${process.env.TWILIO_ACCOUNT_SID}:${whatsappApiKey}`).toString('base64'),
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        To: `whatsapp:+${whatsappNumber}`,
+        From: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
+        Body: message,
+      }),
+    })
+
+    if (!response.ok) {
+      const error = await response.text()
+      console.error('Erro ao enviar WhatsApp:', error)
+    }
+  } catch (error) {
+    console.error('Erro ao enviar WhatsApp:', error)
+  }
+}
+
+async function formatPhoneForPatient(phone: string) {
+  const cleanPhone = phone.replace(/\D/g, '')
+  return cleanPhone.length >= 10 ? cleanPhone : null
+}
 
 export async function bookSlot(formData: FormData) {
   const headersList = await headers()
@@ -31,6 +71,7 @@ export async function bookSlot(formData: FormData) {
   const rawData = {
     slotId: formData.get('slotId'),
     consent: formData.get('consent') === 'true',
+    appointmentType: formData.get('appointmentType') as 'presencial' | 'videoconferencia' | null,
     patientData: {
       name: formData.get('name'),
       email: formData.get('email'),
@@ -46,7 +87,7 @@ export async function bookSlot(formData: FormData) {
     return { error: firstError?.message || 'Erro de validação' }
   }
 
-  const { slotId, patientData } = validated.data
+  const { slotId, patientData, appointmentType } = validated.data
 
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -113,7 +154,10 @@ export async function bookSlot(formData: FormData) {
 
   const { error: updateSlotError } = await supabase
     .from('slots')
-    .update({ status: 'booked' })
+    .update({ 
+      status: 'booked',
+      appointment_type: appointmentType || 'presencial'
+    })
     .eq('id', slotId)
     .eq('status', 'available')
 
@@ -149,6 +193,24 @@ export async function bookSlot(formData: FormData) {
       .eq('id', slotId)
     
     return { error: 'Erro ao criar agendamento' }
+  }
+
+  if (patientData.phone) {
+    const formattedDate = new Date(slot.start_at).toLocaleDateString('pt-BR', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    })
+    const formattedTime = new Date(slot.start_at).toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+    const appointmentTypeText = appointmentType === 'videoconferencia' ? 'Videoconferência' : 'Presencial'
+    
+    const whatsappMessage = `Olá ${patientData.name}! Sua consulta com ${psychologist.full_name} foi agendada com sucesso.\n\n📅 Data: ${formattedDate}\n⏰ Horário: ${formattedTime}\n🏥 Tipo: ${appointmentTypeText}\n\nEm caso de dúvidas, entre em contato conosco.`
+    
+    sendWhatsAppNotification(patientData.phone, whatsappMessage)
   }
 
   const sessionPrice = psychologist.default_session_price || 15000
