@@ -125,6 +125,7 @@ export default function AvailabilityPage() {
     }
 
     await regenerateSlots()
+    await loadData()
 
     setSaving(false)
     alert('Disponibilidade salva com sucesso!')
@@ -323,6 +324,20 @@ export default function AvailabilityPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
+      {rules.filter(r => r.is_active).length > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <h2 className="text-lg font-semibold text-blue-900 mb-3">Horários Configurados</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+            {rules.filter(r => r.is_active).map(rule => (
+              <div key={rule.day_of_week} className="bg-white rounded-lg p-2 text-center border">
+                <div className="text-xs font-medium text-gray-500">{dayNames[rule.day_of_week]}</div>
+                <div className="text-sm font-bold text-blue-600">{rule.start_time} - {rule.end_time}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
         <h1 className="text-xl sm:text-2xl font-bold">Disponibilidade</h1>
         
