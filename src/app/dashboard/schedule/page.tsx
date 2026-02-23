@@ -3,6 +3,19 @@
 import { useEffect, useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { usePsychologist } from '../context'
+import { createManualAppointment, cancelAppointment } from '@/app/actions/appointments'
+
+interface Patient {
+  id: string
+  full_name: string
+  email: string
+  phone: string
+}
+
+interface Collaborator {
+  id: string
+  full_name: string
+}
 
 interface Room {
   id: string
@@ -55,14 +68,183 @@ export default function SchedulePage() {
   const supabase = createClient()
   
   const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [activeTab, setActiveTab] = useState('general')
   const [viewMode, setViewMode] = useState<'week' | 'month'>('week')
   const [currentDate, setCurrentDate] = useState(new Date())
   const [slots, setSlots] = useState<Slot[]>([])
   const [rooms, setRooms] = useState<Room[]>([])
+  const [patients, setPatients] = useState<Patient[]>([])
+  const [collaborators, setCollaborators] = useState<Collaborator[]>([])
   const [selectedRoom, setSelectedRoom] = useState<string>('all')
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null)
   const [showModal, setShowModal] = useState(false)
+  const [showNewAppointmentModal, setShowNewAppointmentModal] = useState(false)
+  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
+
+  const [newAppointment, setNewAppointment] = useState({
+    patientId: '',
+    date: new Date().toISOString().split('T')[0],
+    time: '09:00',
+    roomId: '',
+    appointmentType: 'presencial',
+    collaboratorId: '',
+    notes: '',
+  })
+
+  const timeOptions = Array.from({ length: 24 }, (_, i) => {
+    const hour = i.toString().padStart(2, '0')
+    return `${hour}:00`
+  })
+
+  async function loadData() {
+    setLoading(true)
+    
+    const start = new Date(currentDate)
+    const end = new Date(currentDate)
+    
+    if (viewMode === 'week') {
+      start.setDate(start.getDate() - start.getDay())
+      end.setDate(end.getDate() + (6 - end.getDay()))
+    } else {
+      start.setDate(1)
+      end.setMonth(end.getMonth() + 1, 0)
+    }
+    
+    start.setHours(0, 0, 0, 0)
+    end.setHours(23, 59, 59, 999)
+
+    const [slotsData, roomsData, patientsData, collaboratorsData] = await Promise.all([
+      supabase
+        .from('slots')
+        .select(`
+          id,
+          start_at,
+          status,
+          room_id,
+          appointment_type,
+          patient_id,
+          patients:patient_id(full_name, email),
+          rooms:room_id(name, color),
+          appointments:appointments(id, status, payment_status)
+        `)
+        .eq('psychologist_id', psychologist.id)
+        .gte('start_at', start.toISOString())
+        .lte('start_at', end.toISOString())
+        .order('start_at'),
+      supabase
+        .from('rooms')
+        .select('*')
+        .eq('psychologist_id', psychologist.id)
+        .eq('is_active', true)
+        .order('name'),
+      supabase
+        .from('patients')
+        .select('id, full_name, email, phone')
+        .eq('psychologist_id', psychologist.id)
+        .eq('is_active', true)
+        .order('full_name'),
+      supabase
+        .from('collaborators')
+        .select('id, full_name')
+        .eq('psychologist_id', psychologist.id)
+        .eq('is_active', true)
+        .order('full_name'),
+    ])
+
+    if (!slotsData.error && slotsData.data) {
+      const formattedSlots = slotsData.data.map((slot: any) => ({
+        id: slot.id,
+        scheduled_at: slot.start_at,
+        status: slot.status === 'confirmed' ? 'booked' : slot.status,
+        room_id: slot.room_id,
+        appointment_type: slot.appointment_type,
+        patient_id: slot.patient_id,
+        patient: slot.patients?.[0] ? { name: slot.patients[0].full_name, email: slot.patients[0].email } : null,
+        room: slot.rooms?.[0] || null
+      }))
+      setSlots(formattedSlots)
+    }
+    
+    if (!roomsData.error && roomsData.data) {
+      setRooms(roomsData.data)
+    } else if (roomsData.error) {
+      setRooms([])
+    }
+    
+    if (!patientsData.error && patientsData.data) {
+      setPatients(patientsData.data)
+    }
+    
+    if (!collaboratorsData.error && collaboratorsData.data) {
+      setCollaborators(collaboratorsData.data)
+    }
+    
+    setLoading(false)
+  }
+
+  async function handleCreateAppointment() {
+    setSaving(true)
+    setMessage(null)
+
+    const formData = new FormData()
+    formData.append('patientId', newAppointment.patientId)
+    formData.append('date', newAppointment.date)
+    formData.append('time', newAppointment.time)
+    formData.append('roomId', newAppointment.roomId)
+    formData.append('appointmentType', newAppointment.appointmentType)
+    if (newAppointment.collaboratorId) {
+      formData.append('collaboratorId', newAppointment.collaboratorId)
+    }
+    if (newAppointment.notes) {
+      formData.append('notes', newAppointment.notes)
+    }
+
+    const result = await createManualAppointment(formData)
+    
+    if (result?.error) {
+      setMessage({ type: 'error', text: result.error })
+    } else {
+      setMessage({ type: 'success', text: 'Agendamento criado com sucesso!' })
+      setShowNewAppointmentModal(false)
+      setNewAppointment({
+        patientId: '',
+        date: new Date().toISOString().split('T')[0],
+        time: '09:00',
+        roomId: '',
+        appointmentType: 'presencial',
+        collaboratorId: '',
+        notes: '',
+      })
+      loadData()
+    }
+    setSaving(false)
+  }
+
+  async function handleCancelAppointment(appointmentId: string) {
+    if (!confirm('Tem certeza que deseja cancelar este agendamento?')) return
+    
+    setSaving(true)
+    const result = await cancelAppointment(appointmentId)
+    
+    if (result?.error) {
+      setMessage({ type: 'error', text: result.error })
+    } else {
+      setMessage({ type: 'success', text: 'Agendamento cancelado com sucesso!' })
+      loadData()
+    }
+    setSaving(false)
+  }
+
+  useEffect(() => {
+    loadData()
+  }, [currentDate, viewMode])
+
+  useEffect(() => {
+    if (activeTab === 'room' && rooms.length > 0 && !selectedRoom) {
+      setSelectedRoom(rooms[0].id)
+    }
+  }, [activeTab, rooms])
 
   useEffect(() => {
     loadData()
@@ -91,35 +273,53 @@ export default function SchedulePage() {
     start.setHours(0, 0, 0, 0)
     end.setHours(23, 59, 59, 999)
 
-    const [slotsData, roomsData] = await Promise.all([
+    const [slotsData, roomsData, patientsData, collaboratorsData] = await Promise.all([
       supabase
         .from('slots')
         .select(`
           id,
-          scheduled_at,
+          start_at,
           status,
           room_id,
           appointment_type,
           patient_id,
-          patients:patient_id(name, email),
-          rooms:room_id(name, color)
+          patients:patient_id(full_name, email),
+          rooms:room_id(name, color),
+          appointments:appointments(id, status, payment_status)
         `)
         .eq('psychologist_id', psychologist.id)
-        .gte('scheduled_at', start.toISOString())
-        .lte('scheduled_at', end.toISOString())
-        .order('scheduled_at'),
+        .gte('start_at', start.toISOString())
+        .lte('start_at', end.toISOString())
+        .order('start_at'),
       supabase
         .from('rooms')
         .select('*')
         .eq('psychologist_id', psychologist.id)
         .eq('is_active', true)
-        .order('name')
+        .order('name'),
+      supabase
+        .from('patients')
+        .select('id, full_name, email, phone')
+        .eq('psychologist_id', psychologist.id)
+        .eq('is_active', true)
+        .order('full_name'),
+      supabase
+        .from('collaborators')
+        .select('id, full_name')
+        .eq('psychologist_id', psychologist.id)
+        .eq('is_active', true)
+        .order('full_name'),
     ])
 
     if (!slotsData.error && slotsData.data) {
       const formattedSlots = slotsData.data.map((slot: any) => ({
-        ...slot,
-        patient: slot.patients?.[0] || null,
+        id: slot.id,
+        scheduled_at: slot.start_at,
+        status: slot.status === 'confirmed' ? 'booked' : slot.status,
+        room_id: slot.room_id,
+        appointment_type: slot.appointment_type,
+        patient_id: slot.patient_id,
+        patient: slot.patients?.[0] ? { name: slot.patients[0].full_name, email: slot.patients[0].email } : null,
         room: slot.rooms?.[0] || null
       }))
       setSlots(formattedSlots)
@@ -128,9 +328,15 @@ export default function SchedulePage() {
     if (!roomsData.error && roomsData.data) {
       setRooms(roomsData.data)
     } else if (roomsData.error) {
-      setRooms([
-        { id: 'default', name: 'Sala 1', color: ROOM_COLORS[0], appointment_type: 'presencial' },
-      ])
+      setRooms([])
+    }
+    
+    if (!patientsData.error && patientsData.data) {
+      setPatients(patientsData.data)
+    }
+    
+    if (!collaboratorsData.error && collaboratorsData.data) {
+      setCollaborators(collaboratorsData.data)
     }
     
     setLoading(false)
@@ -288,6 +494,64 @@ export default function SchedulePage() {
     })
   }
 
+  async function handleCreateAppointment() {
+    setSaving(true)
+    setMessage(null)
+
+    const formData = new FormData()
+    formData.append('patientId', newAppointment.patientId)
+    formData.append('date', newAppointment.date)
+    formData.append('time', newAppointment.time)
+    formData.append('roomId', newAppointment.roomId)
+    formData.append('appointmentType', newAppointment.appointmentType)
+    if (newAppointment.collaboratorId) {
+      formData.append('collaboratorId', newAppointment.collaboratorId)
+    }
+    if (newAppointment.notes) {
+      formData.append('notes', newAppointment.notes)
+    }
+
+    const result = await createManualAppointment(formData)
+    
+    if (result?.error) {
+      setMessage({ type: 'error', text: result.error })
+    } else {
+      setMessage({ type: 'success', text: 'Agendamento criado com sucesso!' })
+      setShowNewAppointmentModal(false)
+      setNewAppointment({
+        patientId: '',
+        date: new Date().toISOString().split('T')[0],
+        time: '09:00',
+        roomId: '',
+        appointmentType: 'presencial',
+        collaboratorId: '',
+        notes: '',
+      })
+      loadData()
+    }
+    setSaving(false)
+  }
+
+  async function handleCancelAppointment(appointmentId: string) {
+    if (!confirm('Tem certeza que deseja cancelar este agendamento?')) return
+    
+    setSaving(true)
+    const result = await cancelAppointment(appointmentId)
+    
+    if (result?.error) {
+      setMessage({ type: 'error', text: result.error })
+    } else {
+      setMessage({ type: 'success', text: 'Agendamento cancelado com sucesso!' })
+      loadData()
+    }
+    setSaving(false)
+  }
+
+  const timeOptions = Array.from({ length: 24 }, (_, i) => {
+    const hour = i.toString().padStart(2, '0')
+    return `${hour}:00`
+  })
+
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Tabs */}
@@ -357,6 +621,16 @@ export default function SchedulePage() {
               Mês
             </button>
           </div>
+          
+          <button
+            onClick={() => setShowNewAppointmentModal(true)}
+            className="px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm flex items-center"
+          >
+            <svg className="w-4 h-4 mr-1 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Novo
+          </button>
         </div>
       </div>
 
@@ -669,6 +943,139 @@ export default function SchedulePage() {
                 className="px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
               >
                 Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* New Appointment Modal */}
+      {showNewAppointmentModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl p-4 sm:p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold mb-4">Novo Agendamento</h3>
+            
+            {message && (
+              <div className={`mb-4 p-3 rounded-lg ${message.type === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
+                {message.text}
+              </div>
+            )}
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Paciente *</label>
+                <select
+                  value={newAppointment.patientId}
+                  onChange={(e) => setNewAppointment({ ...newAppointment, patientId: e.target.value })}
+                  className="w-full border rounded-lg px-3 py-2 text-sm"
+                >
+                  <option value="">Selecione um paciente</option>
+                  {patients.map((patient) => (
+                    <option key={patient.id} value={patient.id}>
+                      {patient.full_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Data *</label>
+                  <input
+                    type="date"
+                    value={newAppointment.date}
+                    onChange={(e) => setNewAppointment({ ...newAppointment, date: e.target.value })}
+                    className="w-full border rounded-lg px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Hora *</label>
+                  <select
+                    value={newAppointment.time}
+                    onChange={(e) => setNewAppointment({ ...newAppointment, time: e.target.value })}
+                    className="w-full border rounded-lg px-3 py-2 text-sm"
+                  >
+                    {timeOptions.map((time) => (
+                      <option key={time} value={time}>{time}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Atendimento</label>
+                <select
+                  value={newAppointment.appointmentType}
+                  onChange={(e) => setNewAppointment({ ...newAppointment, appointmentType: e.target.value })}
+                  className="w-full border rounded-lg px-3 py-2 text-sm"
+                >
+                  <option value="presencial">Presencial</option>
+                  <option value="online">Online</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Sala</label>
+                <select
+                  value={newAppointment.roomId}
+                  onChange={(e) => setNewAppointment({ ...newAppointment, roomId: e.target.value })}
+                  className="w-full border rounded-lg px-3 py-2 text-sm"
+                >
+                  <option value="">Selecione uma sala</option>
+                  {rooms.map((room) => (
+                    <option key={room.id} value={room.id}>
+                      {room.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {collaborators.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Profissional</label>
+                  <select
+                    value={newAppointment.collaboratorId}
+                    onChange={(e) => setNewAppointment({ ...newAppointment, collaboratorId: e.target.value })}
+                    className="w-full border rounded-lg px-3 py-2 text-sm"
+                  >
+                    <option value="">Selecione um profissional</option>
+                    {collaborators.map((collaborator) => (
+                      <option key={collaborator.id} value={collaborator.id}>
+                        {collaborator.full_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Observações</label>
+                <textarea
+                  value={newAppointment.notes}
+                  onChange={(e) => setNewAppointment({ ...newAppointment, notes: e.target.value })}
+                  className="w-full border rounded-lg px-3 py-2 text-sm"
+                  rows={2}
+                  placeholder="Observações sobre o atendimento..."
+                />
+              </div>
+            </div>
+            
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowNewAppointmentModal(false)
+                  setMessage(null)
+                }}
+                className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleCreateAppointment}
+                disabled={saving || !newAppointment.patientId || !newAppointment.date || !newAppointment.time}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 text-sm"
+              >
+                {saving ? 'Salvando...' : 'Agendar'}
               </button>
             </div>
           </div>
