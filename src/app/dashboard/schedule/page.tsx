@@ -129,18 +129,17 @@ export default function SchedulePage() {
         .from('slots')
         .select(`
           id,
-          scheduled_at,
+          start_at,
           status,
           room_id,
           appointment_type,
-          patient_id,
-          patients:patient_id(name, email),
+          appointments!inner(id, patients:patients(full_name, email)),
           rooms:room_id(name, color)
         `)
         .eq('psychologist_id', psychologist.id)
-        .gte('scheduled_at', start.toISOString())
-        .lte('scheduled_at', end.toISOString())
-        .order('scheduled_at'),
+        .gte('start_at', start.toISOString())
+        .lte('start_at', end.toISOString())
+        .order('start_at'),
       supabase
         .from('rooms')
         .select('*')
@@ -164,7 +163,8 @@ export default function SchedulePage() {
     if (!slotsData.error && slotsData.data) {
       const formattedSlots = slotsData.data.map((slot: any) => ({
         ...slot,
-        patient: slot.patients?.[0] || null,
+        scheduled_at: slot.start_at,
+        patient: slot.appointments?.[0]?.patients?.[0] || null,
         room: slot.rooms?.[0] || null
       }))
       setSlots(formattedSlots)
