@@ -82,6 +82,7 @@ export default function SchedulePage() {
   const [collaborators, setCollaborators] = useState<Collaborator[]>([])
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
+  const [copied, setCopied] = useState(false)
   const [newAppointment, setNewAppointment] = useState({
     patientId: '',
     date: new Date().toISOString().split('T')[0],
@@ -382,6 +383,17 @@ export default function SchedulePage() {
     })
   }
 
+  const copyBookingLink = async () => {
+    const bookingUrl = `${window.location.origin}/p/${psychologist.slug}/book`
+    try {
+      await navigator.clipboard.writeText(bookingUrl)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      setMessage({ type: 'error', text: 'Erro ao copiar link' })
+    }
+  }
+
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Tabs */}
@@ -437,6 +449,20 @@ export default function SchedulePage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
             Novo
+          </button>
+
+          <button
+            onClick={copyBookingLink}
+            className={`flex items-center px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium ${
+              copied 
+                ? 'bg-green-100 text-green-700 border border-green-300' 
+                : 'bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200'
+            }`}
+          >
+            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+            </svg>
+            {copied ? 'Link Copiado!' : 'Copiar Link'}
           </button>
           
           <div className="flex bg-gray-100 rounded-lg p-1">
