@@ -19,7 +19,7 @@ export default async function DashboardLayout({
 
   const { data: psychologist, error } = await supabase
     .from('psychologists')
-    .select('id, full_name, slug, timezone, onboarding_completed, plan, plan_expires_at')
+    .select('id, full_name, slug, timezone, onboarding_completed, plan, plan_expires_at, clinic_name, clinic_address, clinic_phone, clinic_email, primary_color, secondary_color')
     .eq('user_id', user.id)
     .single()
 

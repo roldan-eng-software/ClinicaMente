@@ -8,6 +8,12 @@ interface Psychologist {
   slug: string
   timezone: string
   plan?: string
+  clinic_name?: string
+  clinic_address?: string
+  clinic_phone?: string
+  clinic_email?: string
+  primary_color?: string
+  secondary_color?: string
 }
 
 interface DashboardContextType {
