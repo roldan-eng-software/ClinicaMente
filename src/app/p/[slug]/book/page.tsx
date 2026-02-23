@@ -12,6 +12,7 @@ interface Slot {
 }
 
 interface Psychologist {
+  id: string
   slug: string
   full_name: string
   crp: string
@@ -22,6 +23,26 @@ interface Psychologist {
   timezone: string
 }
 
+interface Collaborator {
+  id: string
+  full_name: string
+  specialty: string
+  crp: string
+  bio: string
+}
+
+interface Step {
+  id: number
+  title: string
+}
+
+const STEPS: Step[] = [
+  { id: 1, title: 'Profissional' },
+  { id: 2, title: 'Horário' },
+  { id: 3, title: 'Seus Dados' },
+  { id: 4, title: 'Confirmar' },
+]
+
 export default function BookPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params)
   const router = useRouter()
@@ -29,11 +50,13 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
   
   const [loading, setLoading] = useState(true)
   const [psychologist, setPsychologist] = useState<Psychologist | null>(null)
+  const [collaborators, setCollaborators] = useState<Collaborator[]>([])
+  const [selectedProfessional, setSelectedProfessional] = useState<'psychologist' | 'collaborator'>('psychologist')
+  const [selectedCollaboratorId, setSelectedCollaboratorId] = useState<string | null>(null)
   const [slots, setSlots] = useState<Slot[]>([])
-  const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null)
+  const [currentStep, setCurrentStep] = useState(1)
   const [checkingSlot, setCheckingSlot] = useState(false)
-  const [showAuthModal, setShowAuthModal] = useState(false)
   
   const [user, setUser] = useState<any>(null)
   const [patientForm, setPatientForm] = useState({
@@ -43,11 +66,23 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [consentAccepted, setConsentAccepted] = useState(false)
+
+  const [showAuthModal, setShowAuthModal] = useState(false)
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('signup')
+  const [authForm, setAuthForm] = useState({
+    email: '',
+    password: '',
+    name: '',
+    phone: '',
+  })
+  const [authLoading, setAuthLoading] = useState(false)
+  const [authError, setAuthError] = useState<string | null>(null)
 
   useEffect(() => {
     checkAuthAndLoadData()
-  }, [slug])
+  }, [slug, selectedProfessional, selectedCollaboratorId])
 
   async function checkAuthAndLoadData() {
     setLoading(true)
@@ -56,15 +91,11 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
     setUser(user)
 
     if (user) {
-      const { data: patient, error: patientError } = await supabase
+      const { data: patient } = await supabase
         .from('patients')
         .select('full_name, email, phone')
         .eq('user_id', user.id)
         .maybeSingle()
-
-      if (patientError) {
-        console.error('Erro ao buscar paciente:', patientError)
-      }
 
       if (patient) {
         setPatientForm({
@@ -76,6 +107,7 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
     }
 
     await loadPsychologist()
+    await loadCollaborators()
     await loadSlots()
     
     setLoading(false)
@@ -84,7 +116,7 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
   async function loadPsychologist() {
     const { data } = await supabase
       .from('psychologists')
-      .select('slug, full_name, crp, specialty, bio, default_session_price, session_duration_minutes, timezone')
+      .select('id, slug, full_name, crp, specialty, bio, default_session_price, session_duration_minutes, timezone')
       .eq('slug', slug)
       .eq('onboarding_completed', true)
       .single()
@@ -97,56 +129,118 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
     setPsychologist(data)
   }
 
+  async function loadCollaborators() {
+    const psychologistId = psychologist?.id
+    if (!psychologistId) return
+
+    const { data } = await supabase
+      .from('collaborators')
+      .select('id, full_name, specialty, crp, bio')
+      .eq('psychologist_id', psychologistId)
+      .eq('is_active', true)
+      .order('full_name')
+
+    setCollaborators(data || [])
+  }
+
   async function loadSlots() {
+    if (!psychologist) return
+
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     
     const futureDate = new Date(today)
-    futureDate.setDate(futureDate.getDate() + 14)
+    futureDate.setDate(futureDate.getDate() + 30)
 
-    const { data } = await supabase
+    let query = supabase
       .from('slots')
       .select('id, start_at')
-      .eq('psychologist_id', (
-        await supabase
-          .from('psychologists')
-          .select('id')
-          .eq('slug', slug)
-          .single()
-      ).data?.id || '')
+      .eq('psychologist_id', psychologist.id)
       .eq('status', 'available')
       .gte('start_at', today.toISOString())
       .lte('start_at', futureDate.toISOString())
       .order('start_at')
 
+    if (selectedProfessional === 'collaborator' && selectedCollaboratorId) {
+      query = query.eq('collaborator_id', selectedCollaboratorId)
+    } else if (selectedProfessional === 'psychologist') {
+      query = query.or('collaborator_id.is.null,collaborator_id.eq.' + psychologist.id)
+    }
+
+    const { data } = await query
+
     setSlots(data || [])
   }
 
-  async function selectSlot(slot: Slot) {
-    setCheckingSlot(true)
-    setError(null)
+  function selectProfessional(type: 'psychologist' | 'collaborator', collaboratorId?: string) {
+    setSelectedProfessional(type)
+    setSelectedCollaboratorId(collaboratorId || null)
+    setSelectedSlot(null)
+    setCurrentStep(2)
+  }
 
-    const { data: currentSlot } = await supabase
-      .from('slots')
-      .select('status')
-      .eq('id', slot.id)
-      .single()
-
-    if (!currentSlot || currentSlot.status !== 'available') {
-      setError('Este horário acabou de ser reservado por outro paciente. Por favor, escolha outro.')
-      await loadSlots()
-      setCheckingSlot(false)
-      return
-    }
-
-    if (!user) {
-      setShowAuthModal(true)
-      setCheckingSlot(false)
-      return
-    }
-
+  function selectSlot(slot: Slot) {
     setSelectedSlot(slot)
-    setCheckingSlot(false)
+    if (user) {
+      setCurrentStep(4)
+    } else {
+      setCurrentStep(3)
+    }
+  }
+
+  async function handleAuth() {
+    setAuthLoading(true)
+    setAuthError(null)
+
+    try {
+      if (authMode === 'signup') {
+        const { data, error } = await supabase.auth.signUp({
+          email: authForm.email,
+          password: authForm.password,
+          options: {
+            data: {
+              full_name: authForm.name,
+              role: 'patient',
+            },
+          },
+        })
+
+        if (error) throw error
+
+        if (data.user) {
+          const psychologistId = psychologist?.id
+          if (psychologistId) {
+            await supabase.from('patients').insert({
+              psychologist_id: psychologistId,
+              user_id: data.user.id,
+              full_name: authForm.name,
+              email: authForm.email,
+              phone: authForm.phone || null,
+            })
+          }
+        }
+
+        setSuccessMessage('Conta criada! Verifique seu email para confirmar.')
+        setShowAuthModal(false)
+        await checkAuthAndLoadData()
+        setCurrentStep(4)
+      } else {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: authForm.email,
+          password: authForm.password,
+        })
+
+        if (error) throw error
+
+        setShowAuthModal(false)
+        await checkAuthAndLoadData()
+        setCurrentStep(4)
+      }
+    } catch (err: any) {
+      setAuthError(err.message || 'Erro ao processar')
+    } finally {
+      setAuthLoading(false)
+    }
   }
 
   async function handleSubmitPatient() {
@@ -210,8 +304,10 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
       grouped[dateKey].push(slot)
     }
     
-    return Object.entries(grouped).slice(0, 7)
+    return Object.entries(grouped).slice(0, 14)
   }
+
+  const groupedSlots = groupSlotsByDate(slots)
 
   if (loading) {
     return (
@@ -221,7 +317,9 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
     )
   }
 
-  const groupedSlots = groupSlotsByDate(slots)
+  const selectedProfessionalName = selectedProfessional === 'psychologist' 
+    ? psychologist?.full_name 
+    : collaborators.find(c => c.id === selectedCollaboratorId)?.full_name
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -236,7 +334,7 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
           Voltar
         </Link>
 
-        <div className="bg-white rounded-lg shadow-md p-8">
+        <div className="bg-white rounded-lg shadow-md p-6 sm:p-8">
           <h1 className="text-2xl font-bold text-center mb-2">
             Agende sua sessão
           </h1>
@@ -244,16 +342,104 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
             com {psychologist?.full_name}
           </p>
 
+          <div className="flex items-center justify-center mb-8">
+            {STEPS.map((step, index) => (
+              <div key={step.id} className="flex items-center">
+                <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${
+                  currentStep >= step.id 
+                    ? 'bg-blue-600 text-white' 
+                    : 'bg-gray-200 text-gray-500'
+                }`}>
+                  {currentStep > step.id ? (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  ) : step.id}
+                </div>
+                {index < STEPS.length - 1 && (
+                  <div className={`w-8 sm:w-12 h-0.5 mx-1 ${
+                    currentStep > step.id ? 'bg-blue-600' : 'bg-gray-200'
+                  }`} />
+                )}
+              </div>
+            ))}
+          </div>
+
           {error && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
               {error}
             </div>
           )}
 
-          {!selectedSlot ? (
-            <>
-              <h2 className="text-lg font-semibold mb-4">Escolha um horário</h2>
+          {successMessage && (
+            <div className="mb-6 p-4 bg-green-50 border border-green-200 text-green-700 rounded-lg">
+              {successMessage}
+            </div>
+          )}
+
+          {currentStep === 1 && (
+            <div className="space-y-4">
+              <h2 className="text-lg font-semibold mb-4">Escolha o profissional</h2>
               
+              <button
+                onClick={() => selectProfessional('psychologist')}
+                className="w-full p-4 border-2 border-blue-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors text-left"
+              >
+                <div className="flex items-center">
+                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mr-4">
+                    <span className="text-xl text-blue-600 font-bold">
+                      {psychologist?.full_name?.charAt(0) || 'P'}
+                    </span>
+                  </div>
+                  <div>
+                    <div className="font-semibold text-gray-900">{psychologist?.full_name}</div>
+                    <div className="text-sm text-gray-500">Psicólogo(a) titular</div>
+                    <div className="text-xs text-gray-400">CRP: {psychologist?.crp}</div>
+                  </div>
+                </div>
+              </button>
+
+              {collaborators.length > 0 && (
+                <>
+                  <div className="text-sm text-gray-500 mt-6 mb-2">Outros profissionais</div>
+                  {collaborators.map((collaborator) => (
+                    <button
+                      key={collaborator.id}
+                      onClick={() => selectProfessional('collaborator', collaborator.id)}
+                      className="w-full p-4 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors text-left"
+                    >
+                      <div className="flex items-center">
+                        <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mr-4">
+                          <span className="text-xl text-green-600 font-bold">
+                            {collaborator.full_name.charAt(0)}
+                          </span>
+                        </div>
+                        <div>
+                          <div className="font-semibold text-gray-900">{collaborator.full_name}</div>
+                          <div className="text-sm text-gray-500">{collaborator.specialty}</div>
+                          <div className="text-xs text-gray-400">CRP: {collaborator.crp}</div>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </>
+              )}
+            </div>
+          )}
+
+          {currentStep === 2 && (
+            <div className="space-y-4">
+              <button
+                onClick={() => setCurrentStep(1)}
+                className="text-blue-600 hover:underline text-sm mb-4"
+              >
+                ← Escolher outro profissional
+              </button>
+
+              <h2 className="text-lg font-semibold mb-4">
+                Horários disponíveis com {selectedProfessionalName}
+              </h2>
+
               {groupedSlots.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   Nenhum horário disponível no momento
@@ -266,19 +452,18 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
                         {formatSlotDate(daySlots[0].start_at)}
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        {daySlots.slice(0, 8).map((slot) => (
+                        {daySlots.slice(0, 10).map((slot) => (
                           <button
                             key={slot.id}
                             onClick={() => selectSlot(slot)}
-                            disabled={checkingSlot}
-                            className="px-4 py-2 bg-white border border-blue-200 text-blue-700 rounded-lg hover:bg-blue-50 hover:border-blue-400 transition-colors disabled:opacity-50"
+                            className="px-4 py-2 bg-white border border-blue-200 text-blue-700 rounded-lg hover:bg-blue-50 hover:border-blue-400 transition-colors"
                           >
                             {formatSlotTime(slot.start_at)}
                           </button>
                         ))}
-                        {daySlots.length > 8 && (
+                        {daySlots.length > 10 && (
                           <span className="px-4 py-2 text-gray-500 text-sm">
-                            +{daySlots.length - 8} mais
+                            +{daySlots.length - 10} mais
                           </span>
                         )}
                       </div>
@@ -286,20 +471,119 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
                   ))}
                 </div>
               )}
-            </>
-          ) : (
+            </div>
+          )}
+
+          {currentStep === 3 && (
             <div className="space-y-6">
+              <button
+                onClick={() => setCurrentStep(2)}
+                className="text-blue-600 hover:underline text-sm mb-4"
+              >
+                ← Escolher outro horário
+              </button>
+
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <div className="text-sm text-blue-600 mb-1">Horário selecionado</div>
                 <div className="text-lg font-semibold text-blue-900">
-                  {formatSlotDate(selectedSlot.start_at)} às {formatSlotTime(selectedSlot.start_at)}
+                  {selectedSlot && formatSlotDate(selectedSlot.start_at)} às {selectedSlot && formatSlotTime(selectedSlot.start_at)}
                 </div>
-                <button
-                  onClick={() => setSelectedSlot(null)}
-                  className="text-sm text-blue-600 hover:underline mt-2"
-                >
-                  Alterar horário
-                </button>
+                <div className="text-sm text-blue-700">com {selectedProfessionalName}</div>
+              </div>
+
+              {!user ? (
+                <div className="space-y-4">
+                  <h2 className="text-lg font-semibold mb-4">Identificação</h2>
+                  <p className="text-gray-600 text-sm mb-4">
+                    Já tem conta?{' '}
+                    <button onClick={() => { setAuthMode('login'); setShowAuthModal(true) }} className="text-blue-600 hover:underline">
+                      Entre aqui
+                    </button>
+                  </p>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Nome completo *
+                    </label>
+                    <input
+                      type="text"
+                      value={patientForm.name}
+                      onChange={(e) => setPatientForm({ ...patientForm, name: e.target.value })}
+                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Email *
+                    </label>
+                    <input
+                      type="email"
+                      value={patientForm.email}
+                      onChange={(e) => setPatientForm({ ...patientForm, email: e.target.value })}
+                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Telefone
+                    </label>
+                    <input
+                      type="tel"
+                      value={patientForm.phone}
+                      onChange={(e) => setPatientForm({ ...patientForm, phone: e.target.value })}
+                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="(11) 99999-9999"
+                    />
+                  </div>
+
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <label className="flex items-start cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={consentAccepted}
+                        onChange={(e) => setConsentAccepted(e.target.checked)}
+                        className="w-5 h-5 text-blue-600 mt-0.5 mr-3"
+                      />
+                      <span className="text-sm text-gray-600">
+                        Eu li e concordo com a{' '}
+                        <a href="/privacy" target="_blank" className="text-blue-600 hover:underline">Política de Privacidade</a>
+                        {' '}e os{' '}
+                        <a href="/terms" target="_blank" className="text-blue-600 hover:underline">Termos de Uso</a>.
+                      </span>
+                    </label>
+                  </div>
+
+                  <button
+                    onClick={() => { setAuthMode('signup'); setShowAuthModal(true) }}
+                    disabled={!patientForm.name || !patientForm.email || !consentAccepted}
+                    className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    Criar conta e continuar
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          )}
+
+          {currentStep === 4 && user && (
+            <div className="space-y-6">
+              <button
+                onClick={() => setCurrentStep(2)}
+                className="text-blue-600 hover:underline text-sm mb-4"
+              >
+                ← Escolher outro horário
+              </button>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="text-sm text-blue-600 mb-1">Horário selecionado</div>
+                <div className="text-lg font-semibold text-blue-900">
+                  {selectedSlot && formatSlotDate(selectedSlot.start_at)} às {selectedSlot && formatSlotTime(selectedSlot.start_at)}
+                </div>
+                <div className="text-sm text-blue-700">com {selectedProfessionalName}</div>
               </div>
 
               <div>
@@ -360,10 +644,6 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
                     <a href="/privacy" target="_blank" className="text-blue-600 hover:underline">Política de Privacidade</a>
                     {' '}e os{' '}
                     <a href="/terms" target="_blank" className="text-blue-600 hover:underline">Termos de Uso</a>.
-                    <br />
-                    <span className="text-xs text-gray-500">
-                      Para confirmar o agendamento, é necessário aceitar os termos.
-                    </span>
                   </span>
                 </label>
               </div>
@@ -381,32 +661,107 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
       </div>
 
       {showAuthModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4">Faça login ou cadastre-se</h3>
-            <p className="text-gray-600 mb-6">
-              Você precisa de uma conta para agendar. Você pode fazer login ou criar uma nova conta.
-            </p>
-            <div className="flex space-x-3">
-              <Link
-                href={`/p/${slug}/login?slot=${selectedSlot?.id}`}
-                className="flex-1 py-3 bg-blue-600 text-white text-center rounded-lg hover:bg-blue-700"
+            <h3 className="text-lg font-semibold mb-4">
+              {authMode === 'signup' ? 'Criar conta' : 'Entrar'}
+            </h3>
+
+            {authError && (
+              <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg text-sm">
+                {authError}
+              </div>
+            )}
+
+            <div className="space-y-4">
+              {authMode === 'signup' && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Nome completo
+                    </label>
+                    <input
+                      type="text"
+                      value={authForm.name}
+                      onChange={(e) => setAuthForm({ ...authForm, name: e.target.value })}
+                      className="w-full px-4 py-2 border rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Telefone
+                    </label>
+                    <input
+                      type="tel"
+                      value={authForm.phone}
+                      onChange={(e) => setAuthForm({ ...authForm, phone: e.target.value })}
+                      className="w-full px-4 py-2 border rounded-lg"
+                    />
+                  </div>
+                </>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={authForm.email}
+                  onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })}
+                  className="w-full px-4 py-2 border rounded-lg"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Senha
+                </label>
+                <input
+                  type="password"
+                  value={authForm.password}
+                  onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
+                  className="w-full px-4 py-2 border rounded-lg"
+                />
+              </div>
+
+              <button
+                onClick={handleAuth}
+                disabled={authLoading || !authForm.email || !authForm.password || (authMode === 'signup' && !authForm.name)}
+                className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
               >
-                Fazer login
-              </Link>
-              <Link
-                href={`/p/${slug}/signup?slot=${selectedSlot?.id}`}
-                className="flex-1 py-3 border border-gray-300 text-gray-700 text-center rounded-lg hover:bg-gray-50"
+                {authLoading 
+                  ? 'Processando...' 
+                  : authMode === 'signup' 
+                    ? 'Criar conta' 
+                    : 'Entrar'}
+              </button>
+
+              <div className="text-center text-sm text-gray-600">
+                {authMode === 'signup' ? (
+                  <>
+                    Já tem conta?{' '}
+                    <button onClick={() => setAuthMode('login')} className="text-blue-600 hover:underline">
+                      Entre aqui
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    Não tem conta?{' '}
+                    <button onClick={() => setAuthMode('signup')} className="text-blue-600 hover:underline">
+                      Cadastre-se
+                    </button>
+                  </>
+                )}
+              </div>
+
+              <button
+                onClick={() => setShowAuthModal(false)}
+                className="w-full py-2 text-gray-500 hover:text-gray-700"
               >
-                Criar conta
-              </Link>
+                Cancelar
+              </button>
             </div>
-            <button
-              onClick={() => setShowAuthModal(false)}
-              className="w-full mt-3 py-2 text-gray-500 hover:text-gray-700"
-            >
-              Cancelar
-            </button>
           </div>
         </div>
       )}
