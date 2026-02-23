@@ -42,9 +42,9 @@ interface Patient {
 
 interface Collaborator {
   id: string
-  name: string
+  full_name: string
   specialty: string
-  color?: string
+  crp?: string
 }
 
 const ROOM_COLORS = [
@@ -155,10 +155,10 @@ export default function SchedulePage() {
         .order('full_name'),
       supabase
         .from('collaborators')
-        .select('id, name, specialty, color')
+        .select('id, full_name, specialty, crp')
         .eq('psychologist_id', psychologist.id)
         .eq('is_active', true)
-        .order('name'),
+        .order('full_name'),
     ])
 
     if (!slotsData.error && slotsData.data) {
@@ -884,7 +884,7 @@ export default function SchedulePage() {
                 >
                   <option value="">Selecione um colaborador</option>
                   {collaborators.map((collab) => (
-                    <option key={collab.id} value={collab.id}>{collab.name} - {collab.specialty}</option>
+                    <option key={collab.id} value={collab.id}>{collab.full_name} - {collab.specialty}</option>
                   ))}
                 </select>
               </div>
