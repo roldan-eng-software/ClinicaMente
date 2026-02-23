@@ -137,7 +137,6 @@ export async function bookSlot(formData: FormData) {
       psychologist_id: psychologistId,
       patient_id: patientId,
       slot_id: slotId,
-      scheduled_at: slot.start_at,
       status: 'scheduled',
     })
     .select()
