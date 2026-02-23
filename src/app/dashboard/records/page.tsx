@@ -268,58 +268,58 @@ export default function RecordsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Prontuário</h1>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+        <h1 className="text-xl sm:text-2xl font-bold">Prontuário</h1>
         
-        <div className="w-64">
+        <div className="w-full sm:w-64">
           <input
             type="text"
             placeholder="Buscar paciente..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 sm:px-4 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
       </div>
 
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <div className="flex items-center">
-          <svg className="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
+        <div className="flex items-start">
+          <svg className="w-5 h-5 text-blue-600 mr-2 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
           </svg>
-          <span className="text-blue-700 text-sm">
+          <span className="text-blue-700 text-xs sm:text-sm">
             Os prontuários são criptografados com AES-256. Apenas você pode acessá-los.
           </span>
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow">
+      <div className="bg-white rounded-lg shadow overflow-hidden">
         {appointments.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">
+          <div className="text-center py-8 sm:py-12 text-gray-500 text-sm">
             Nenhuma consulta concluída encontrada
           </div>
         ) : (
           <div className="divide-y">
             {appointments.map((apt) => (
-              <div key={apt.id} className="p-4 flex items-center justify-between hover:bg-gray-50">
-                <div>
-                  <div className="font-medium">{apt.patient?.name}</div>
-                  <div className="text-sm text-gray-500">{formatDateTime(apt.scheduled_at)}</div>
+              <div key={apt.id} className="p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+                <div className="min-w-0">
+                  <div className="font-medium text-sm sm:text-base truncate">{apt.patient?.name}</div>
+                  <div className="text-xs sm:text-sm text-gray-500">{formatDateTime(apt.scheduled_at)}</div>
                 </div>
-                <div className="flex items-center space-x-4">
+                <div className="flex flex-row sm:flex-row items-center justify-between sm:justify-end gap-2 sm:gap-3">
                   {apt.session_note ? (
-                    <span className="px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full">
+                    <span className="px-2 sm:px-3 py-1 bg-green-100 text-green-800 text-xs sm:text-sm rounded-full">
                       Com anotação
                     </span>
                   ) : (
-                    <span className="px-3 py-1 bg-gray-100 text-gray-600 text-sm rounded-full">
+                    <span className="px-2 sm:px-3 py-1 bg-gray-100 text-gray-600 text-xs sm:text-sm rounded-full">
                       Sem anotação
                     </span>
                   )}
                   <button
                     onClick={() => openNoteEditor(apt)}
-                    className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700"
+                    className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 text-white text-xs sm:text-sm rounded-lg hover:bg-blue-700"
                   >
                     {apt.session_note ? 'Editar' : 'Adicionar'}
                   </button>
@@ -331,12 +331,12 @@ export default function RecordsPage() {
       </div>
 
       {selectedAppointment && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-2xl">
-            <h3 className="text-lg font-semibold mb-2">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl p-4 sm:p-6 w-full max-w-lg sm:max-w-2xl">
+            <h3 className="text-base sm:text-lg font-semibold mb-2">
               Prontuário - {selectedAppointment.patient?.name}
             </h3>
-            <p className="text-sm text-gray-500 mb-4">
+            <p className="text-xs sm:text-sm text-gray-500 mb-3 sm:mb-4">
               Consulta: {formatDateTime(selectedAppointment.scheduled_at)}
             </p>
             
@@ -345,26 +345,26 @@ export default function RecordsPage() {
               <textarea
                 value={noteContent}
                 onChange={(e) => setNoteContent(e.target.value)}
-                rows={10}
-                className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                rows={6}
+                className="w-full p-2 sm:p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                 placeholder="Descreva observações, evoluções, técnicas utilizadas..."
               />
             </div>
             
-            <div className="flex justify-end space-x-3 mt-6">
+            <div className="flex flex-col sm:flex-row justify-end gap-2 sm:space-x-3 mt-4 sm:mt-6">
               <button
                 onClick={() => {
                   setSelectedAppointment(null)
                   setNoteContent('')
                 }}
-                className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+                className="px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 w-full sm:w-auto"
               >
                 Cancelar
               </button>
               <button
                 onClick={saveNote}
                 disabled={saving || !noteContent.trim()}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                className="px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 text-sm w-full sm:w-auto"
               >
                 {saving ? 'Salvando...' : 'Salvar'}
               </button>

@@ -227,52 +227,53 @@ export default function FinancialPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Financeiro</h1>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+        <h1 className="text-xl sm:text-2xl font-bold">Financeiro</h1>
         
         <button
           onClick={openNewPayment}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center"
+          className="px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center text-sm"
         >
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 sm:w-5 sm:h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
-          Registrar Pagamento
+          <span className="hidden sm:inline">Registrar Pagamento</span>
+          <span className="sm:hidden">Novo</span>
         </button>
       </div>
 
       {isPro ? (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-sm text-gray-500">Total</div>
-            <div className="text-2xl font-bold">{formatCurrency(summary.total)}</div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+            <div className="text-xs sm:text-sm text-gray-500">Total</div>
+            <div className="text-xl sm:text-2xl font-bold">{formatCurrency(summary.total)}</div>
           </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-sm text-gray-500">Recebido</div>
-            <div className="text-2xl font-bold text-green-600">{formatCurrency(summary.paid)}</div>
+          <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+            <div className="text-xs sm:text-sm text-gray-500">Recebido</div>
+            <div className="text-xl sm:text-2xl font-bold text-green-600">{formatCurrency(summary.paid)}</div>
           </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-sm text-gray-500">Pendente</div>
-            <div className="text-2xl font-bold text-yellow-600">{formatCurrency(summary.pending)}</div>
+          <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+            <div className="text-xs sm:text-sm text-gray-500">Pendente</div>
+            <div className="text-xl sm:text-2xl font-bold text-yellow-600">{formatCurrency(summary.pending)}</div>
           </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-sm text-gray-500">Vencido</div>
-            <div className="text-2xl font-bold text-red-600">{formatCurrency(summary.overdue)}</div>
+          <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+            <div className="text-xs sm:text-sm text-gray-500">Vencido</div>
+            <div className="text-xl sm:text-2xl font-bold text-red-600">{formatCurrency(summary.overdue)}</div>
           </div>
         </div>
       ) : (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <div className="flex items-center">
-            <svg className="w-5 h-5 text-yellow-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 sm:p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <svg className="w-5 h-5 text-yellow-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <span className="text-yellow-800">
+            <span className="text-yellow-800 text-sm">
               Upgrade para o plano Pro para ver o resumo financeiro do mês.
             </span>
             <button
               onClick={() => {}}
-              className="ml-4 text-sm text-yellow-600 hover:underline"
+              className="text-sm text-yellow-600 hover:underline sm:ml-2"
             >
               Ver planos
             </button>
@@ -280,47 +281,49 @@ export default function FinancialPage() {
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow">
-        <div className="p-4 border-b flex flex-wrap items-center gap-4">
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">Status</label>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="all">Todos</option>
-              <option value="paid">Pago</option>
-              <option value="pending">Pendente</option>
-              <option value="failed">Vencido</option>
-            </select>
-          </div>
-          
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">De</label>
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-              className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">Até</label>
-            <input
-              type="date"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-              className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="p-3 sm:p-4 border-b">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+            <div className="min-w-[100px]">
+              <label className="block text-xs text-gray-500 mb-1">Status</label>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="border rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">Todos</option>
+                <option value="paid">Pago</option>
+                <option value="pending">Pendente</option>
+                <option value="failed">Vencido</option>
+              </select>
+            </div>
+            
+            <div className="min-w-[100px]">
+              <label className="block text-xs text-gray-500 mb-1">De</label>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="border rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            
+            <div className="min-w-[100px]">
+              <label className="block text-xs text-gray-500 mb-1">Até</label>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="border rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
           </div>
         </div>
 
         {loading ? (
-          <div className="text-center py-12">Carregando...</div>
+          <div className="text-center py-8 sm:py-12">Carregando...</div>
         ) : payments.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">
+          <div className="text-center py-8 sm:py-12 text-gray-500 text-sm">
             Nenhum pagamento encontrado
           </div>
         ) : (
@@ -328,24 +331,24 @@ export default function FinancialPage() {
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Data</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Paciente</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Valor</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Método</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">Data</th>
+                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">Paciente</th>
+                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">Valor</th>
+                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase hidden sm:table-cell">Método</th>
+                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {payments.map((payment) => (
                   <tr key={payment.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm">{formatDate(payment.paid_at)}</td>
-                    <td className="px-4 py-3 text-sm">
+                    <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm">{formatDate(payment.paid_at)}</td>
+                    <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm">
                       <div className="font-medium">{payment.patient?.name || '-'}</div>
-                      <div className="text-gray-500 text-xs">{payment.patient?.email}</div>
+                      <div className="text-gray-500 text-xs hidden sm:block">{payment.patient?.email}</div>
                     </td>
-                    <td className="px-4 py-3 text-sm font-medium">{formatCurrency(payment.amount)}</td>
-                    <td className="px-4 py-3 text-sm capitalize">{payment.payment_method}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-medium">{formatCurrency(payment.amount)}</td>
+                    <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm capitalize hidden sm:table-cell">{payment.payment_method}</td>
+                    <td className="px-3 sm:px-4 py-2 sm:py-3">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(payment.status)}`}>
                         {getStatusLabel(payment.status)}
                       </span>

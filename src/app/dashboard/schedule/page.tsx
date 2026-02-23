@@ -179,15 +179,15 @@ export default function SchedulePage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Agenda</h1>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+        <h1 className="text-xl sm:text-2xl font-bold">Agenda</h1>
         
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2 sm:space-x-4">
           <div className="flex bg-gray-100 rounded-lg p-1">
             <button
               onClick={() => setViewMode('week')}
-              className={`px-4 py-2 rounded-md text-sm font-medium ${
+              className={`px-2 sm:px-4 py-1 sm:py-2 rounded-md text-xs sm:text-sm font-medium ${
                 viewMode === 'week' 
                   ? 'bg-white shadow text-blue-600' 
                   : 'text-gray-600 hover:text-gray-900'
@@ -197,7 +197,7 @@ export default function SchedulePage() {
             </button>
             <button
               onClick={() => setViewMode('month')}
-              className={`px-4 py-2 rounded-md text-sm font-medium ${
+              className={`px-2 sm:px-4 py-1 sm:py-2 rounded-md text-xs sm:text-sm font-medium ${
                 viewMode === 'month' 
                   ? 'bg-white shadow text-blue-600' 
                   : 'text-gray-600 hover:text-gray-900'
@@ -209,44 +209,44 @@ export default function SchedulePage() {
         </div>
       </div>
 
-      <div className="flex items-center justify-between bg-white rounded-lg shadow p-4">
+      <div className="flex items-center justify-between bg-white rounded-lg shadow p-2 sm:p-4">
         <button
           onClick={() => navigatePeriod(-1)}
-          className="p-2 hover:bg-gray-100 rounded-md"
+          className="p-1 sm:p-2 hover:bg-gray-100 rounded-md"
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </button>
         
-        <div className="text-lg font-medium">{formatDateRange()}</div>
+        <div className="text-sm sm:text-lg font-medium">{formatDateRange()}</div>
         
         <button
           onClick={() => navigatePeriod(1)}
-          className="p-2 hover:bg-gray-100 rounded-md"
+          className="p-1 sm:p-2 hover:bg-gray-100 rounded-md"
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
         </button>
       </div>
 
       {loading ? (
-        <div className="text-center py-12">Carregando...</div>
+        <div className="text-center py-8 sm:py-12">Carregando...</div>
       ) : viewMode === 'week' ? (
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="grid grid-cols-7 border-b">
             {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((day, i) => (
-              <div key={i} className="px-2 py-3 text-center text-sm font-medium text-gray-500 bg-gray-50">
+              <div key={i} className="px-1 sm:px-2 py-2 sm:py-3 text-center text-xs sm:text-sm font-medium text-gray-500 bg-gray-50">
                 {day}
               </div>
             ))}
           </div>
           
-          <div className="grid grid-cols-7 min-h-[400px]">
+          <div className="grid grid-cols-7 min-h-[300px] sm:min-h-[400px]">
             {weekDays.map((day, i) => (
               <div key={i} className="border-r last:border-r-0">
-                <div className={`px-2 py-2 text-center text-sm border-b ${
+                <div className={`px-1 sm:px-2 py-1 sm:py-2 text-center text-xs sm:text-sm border-b ${
                   day.date.toDateString() === new Date().toDateString()
                     ? 'bg-blue-50 font-semibold text-blue-600'
                     : 'bg-gray-50'
@@ -256,9 +256,9 @@ export default function SchedulePage() {
                   </div>
                 </div>
                 
-                <div className="p-2 space-y-2">
+                <div className="p-1 sm:p-2 space-y-1 sm:space-y-2">
                   {day.slots.length === 0 ? (
-                    <div className="text-xs text-gray-400 text-center py-4">Sem horários</div>
+                    <div className="text-xs text-gray-400 text-center py-2 sm:py-4">-</div>
                   ) : (
                     day.slots.map(slot => {
                       const { time } = toLocalTime(slot.scheduled_at)
@@ -269,13 +269,13 @@ export default function SchedulePage() {
                             setSelectedSlot(slot)
                             setShowModal(true)
                           }}
-                          className={`w-full p-2 rounded-md border text-xs text-left ${getSlotColor(slot)}`}
+                          className={`w-full p-1 sm:p-2 rounded-md border text-xs text-left ${getSlotColor(slot)}`}
                         >
-                          <div className="font-medium">{time}</div>
+                          <div className="font-medium text-[10px] sm:text-xs">{time}</div>
                           {slot.patient && (
-                            <div className="truncate opacity-75">{slot.patient.name}</div>
+                            <div className="truncate opacity-75 text-[10px]">{slot.patient.name}</div>
                           )}
-                          <div className="text-[10px] opacity-60">{getStatusLabel(slot.status)}</div>
+                          <div className="text-[8px] sm:text-[10px] opacity-60 hidden sm:block">{getStatusLabel(slot.status)}</div>
                         </button>
                       )
                     })
@@ -289,7 +289,7 @@ export default function SchedulePage() {
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="grid grid-cols-7 border-b">
             {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((day, i) => (
-              <div key={i} className="px-2 py-3 text-center text-sm font-medium text-gray-500 bg-gray-50">
+              <div key={i} className="px-1 sm:px-2 py-2 sm:py-3 text-center text-xs sm:text-sm font-medium text-gray-500 bg-gray-50">
                 {day}
               </div>
             ))}
@@ -297,7 +297,7 @@ export default function SchedulePage() {
           
           <div className="grid grid-cols-7">
             {Array.from({ length: monthDays[0]?.date.getDay() || 0 }).map((_, i) => (
-              <div key={`empty-${i}`} className="min-h-[100px] border-b border-r bg-gray-50" />
+              <div key={`empty-${i}`} className="min-h-[60px] sm:min-h-[100px] border-b border-r bg-gray-50" />
             ))}
             
             {monthDays.map((day, i) => {
@@ -307,13 +307,13 @@ export default function SchedulePage() {
               return (
                 <div 
                   key={i} 
-                  className={`min-h-[100px] border-b border-r p-2 ${
+                  className={`min-h-[60px] sm:min-h-[100px] border-b border-r p-1 sm:p-2 ${
                     day.date.toDateString() === new Date().toDateString()
                       ? 'bg-blue-50'
                       : ''
                   }`}
                 >
-                  <div className={`text-sm font-medium mb-1 ${
+                  <div className={`text-xs sm:text-sm font-medium mb-0 sm:mb-1 ${
                     day.date.toDateString() === new Date().toDateString()
                       ? 'text-blue-600'
                       : 'text-gray-700'
@@ -322,10 +322,10 @@ export default function SchedulePage() {
                   </div>
                   
                   {bookedCount > 0 && (
-                    <div className="text-xs text-green-600 font-medium">{bookedCount} agendado(s)</div>
+                    <div className="text-[10px] sm:text-xs text-green-600 font-medium">{bookedCount} agendado(s)</div>
                   )}
                   {availableCount > 0 && (
-                    <div className="text-xs text-gray-500">{availableCount} disponível(is)</div>
+                    <div className="text-[10px] sm:text-xs text-gray-500">{availableCount} disponível(is)</div>
                   )}
                 </div>
               )
@@ -335,14 +335,14 @@ export default function SchedulePage() {
       )}
 
       {showModal && selectedSlot && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4">Detalhes do Horário</h3>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl p-4 sm:p-6 w-full max-w-sm sm:max-w-md">
+            <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Detalhes do Horário</h3>
             
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <div>
                 <label className="text-sm text-gray-500">Data e Hora</label>
-                <p className="font-medium">
+                <p className="font-medium text-sm sm:text-base">
                   {toLocalTime(selectedSlot.scheduled_at).date.toLocaleDateString('pt-BR', {
                     weekday: 'long',
                     day: 'numeric',
@@ -353,7 +353,7 @@ export default function SchedulePage() {
               
               <div>
                 <label className="text-sm text-gray-500">Status</label>
-                <p className={`font-medium ${
+                <p className={`font-medium text-sm sm:text-base ${
                   selectedSlot.status === 'booked' ? 'text-green-600' :
                   selectedSlot.status === 'available' ? 'text-blue-600' :
                   'text-gray-600'
@@ -365,13 +365,13 @@ export default function SchedulePage() {
               {selectedSlot.patient && (
                 <div>
                   <label className="text-sm text-gray-500">Paciente</label>
-                  <p className="font-medium">{selectedSlot.patient.name}</p>
-                  <p className="text-sm text-gray-500">{selectedSlot.patient.email}</p>
+                  <p className="font-medium text-sm sm:text-base">{selectedSlot.patient.name}</p>
+                  <p className="text-xs sm:text-sm text-gray-500">{selectedSlot.patient.email}</p>
                 </div>
               )}
               
               {selectedSlot.status === 'available' && (
-                <div className="bg-blue-50 p-4 rounded-lg">
+                <div className="bg-blue-50 p-3 sm:p-4 rounded-lg">
                   <p className="text-sm text-blue-700">
                     Este horário está disponível para agendamento.
                   </p>
@@ -379,10 +379,10 @@ export default function SchedulePage() {
               )}
             </div>
             
-            <div className="flex justify-end space-x-3 mt-6">
+            <div className="flex justify-end space-x-2 sm:space-x-3 mt-4 sm:mt-6">
               <button
                 onClick={() => setShowModal(false)}
-                className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+                className="px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
               >
                 Fechar
               </button>
