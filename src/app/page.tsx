@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import "./landing.css";
+import CookieBanner from "@/components/CookieBanner";
 
 export const metadata: Metadata = {
   title:
@@ -288,13 +289,16 @@ export default function Home() {
           <div className="landing-footer-links">
             <Link href="/login">Acessar sistema</Link>
             <Link href="/signup">Criar conta</Link>
-            <Link href="/minha-conta/privacidade">Privacidade</Link>
+            <Link href="/privacidade">Privacidade</Link>
+            <Link href="/termos">Termos de Uso</Link>
+            <Link href="/politica-cookies">Cookies</Link>
           </div>
         </div>
         <p className="landing-footer-copy">
           © {new Date().getFullYear()} ClínicaMente. Todos os direitos reservados.
         </p>
       </footer>
+      <CookieBanner />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

@@ -1,0 +1,183 @@
+.legal-page {
+  min-height: 100vh;
+  background: #fafafa;
+}
+
+.legal-header {
+  padding: 1.5rem 2rem;
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.legal-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+  color: #111827;
+}
+
+.legal-logo .landing-logo-text {
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.legal-logo .landing-logo-text span {
+  color: #4f46e5;
+}
+
+.legal-content {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 3rem 2rem;
+  background: white;
+  border-radius: 0;
+}
+
+.legal-content h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 0.5rem;
+  line-height: 1.2;
+}
+
+.legal-updated {
+  color: #6b7280;
+  font-size: 0.875rem;
+  margin-bottom: 2.5rem;
+}
+
+.legal-content h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #111827;
+  margin-top: 2.5rem;
+  margin-bottom: 1rem;
+}
+
+.legal-content h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #374151;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.legal-content p {
+  color: #4b5563;
+  line-height: 1.7;
+  margin-bottom: 1rem;
+}
+
+.legal-content ul {
+  margin: 1rem 0;
+  padding-left: 1.5rem;
+}
+
+.legal-content li {
+  color: #4b5563;
+  line-height: 1.7;
+  margin-bottom: 0.5rem;
+}
+
+.legal-content li strong {
+  color: #111827;
+}
+
+.legal-content a {
+  color: #4f46e5;
+  text-decoration: underline;
+}
+
+.legal-content a:hover {
+  color: #4338ca;
+}
+
+.legal-contact {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  margin-top: 1rem;
+}
+
+.legal-contact p {
+  margin-bottom: 0.5rem;
+}
+
+.legal-contact p:last-child {
+  margin-bottom: 0;
+}
+
+.legal-footer {
+  text-align: center;
+  padding: 2rem;
+  background: white;
+  border-top: 1px solid #e5e7eb;
+}
+
+.legal-footer a {
+  display: inline-block;
+  color: #4f46e5;
+  text-decoration: none;
+  font-weight: 500;
+  margin-bottom: 1rem;
+}
+
+.legal-footer a:hover {
+  text-decoration: underline;
+}
+
+.legal-footer p {
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+.cookies-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5rem 0;
+  font-size: 0.875rem;
+}
+
+.cookies-table th,
+.cookies-table td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border: 1px solid #e5e7eb;
+}
+
+.cookies-table th {
+  background: #f9fafb;
+  font-weight: 600;
+  color: #374151;
+}
+
+.cookies-table td {
+  color: #4b5563;
+}
+
+@media (max-width: 768px) {
+  .legal-content {
+    padding: 2rem 1.5rem;
+  }
+
+  .legal-content h1 {
+    font-size: 1.75rem;
+  }
+
+  .legal-content h2 {
+    font-size: 1.25rem;
+  }
+
+  .cookies-table {
+    font-size: 0.75rem;
+  }
+
+  .cookies-table th,
+  .cookies-table td {
+    padding: 0.5rem;
+  }
+}
