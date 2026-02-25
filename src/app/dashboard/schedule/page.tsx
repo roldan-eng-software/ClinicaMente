@@ -60,8 +60,8 @@ const ROOM_COLORS = [
 
 const TABS = [
   { id: 'general', label: 'Agenda Geral' },
-  { id: 'today', label: 'Hoje' },
-  { id: 'room', label: 'Por Sala' },
+  { id: 'today', label: 'Sessões por dia' },
+  { id: 'room', label: 'Agenda de salas' },
 ]
 
 export default function SchedulePage() {
@@ -70,7 +70,7 @@ export default function SchedulePage() {
   
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('general')
-  const [viewMode, setViewMode] = useState<'week' | 'month'>('week')
+  const [viewMode, setViewMode] = useState<'week' | 'month' | 'day'>('week')
   const [currentDate, setCurrentDate] = useState(new Date())
   const [slots, setSlots] = useState<Slot[]>([])
   const [rooms, setRooms] = useState<Room[]>([])
@@ -83,6 +83,9 @@ export default function SchedulePage() {
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
   const [copied, setCopied] = useState(false)
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [timeRangeStart, setTimeRangeStart] = useState('06:00')
+  const [timeRangeEnd, setTimeRangeEnd] = useState('16:00')
   const [newAppointment, setNewAppointment] = useState({
     patientId: '',
     date: new Date().toISOString().split('T')[0],
@@ -97,6 +100,20 @@ export default function SchedulePage() {
     const hour = i.toString().padStart(2, '0')
     return `${hour}:00`
   })
+
+  const getHourlySlots = () => {
+    const slots = []
+    const [startHour] = timeRangeStart.split(':').map(Number)
+    const [endHour] = timeRangeEnd.split(':').map(Number)
+    
+    for (let i = startHour; i <= endHour; i++) {
+      const hour = i.toString().padStart(2, '0')
+      slots.push(`${hour}:00`)
+    }
+    return slots
+  }
+
+  const hourlySlots = useMemo(() => getHourlySlots(), [timeRangeStart, timeRangeEnd])
 
   useEffect(() => {
     loadData()
@@ -114,16 +131,20 @@ export default function SchedulePage() {
     const start = new Date(currentDate)
     const end = new Date(currentDate)
     
-    if (viewMode === 'week') {
+    if (viewMode === 'day') {
+      start.setHours(0, 0, 0, 0)
+      end.setHours(23, 59, 59, 999)
+    } else if (viewMode === 'week') {
       start.setDate(start.getDate() - start.getDay())
       end.setDate(end.getDate() + (6 - end.getDay()))
+      start.setHours(0, 0, 0, 0)
+      end.setHours(23, 59, 59, 999)
     } else {
       start.setDate(1)
       end.setMonth(end.getMonth() + 1, 0)
+      start.setHours(0, 0, 0, 0)
+      end.setHours(23, 59, 59, 999)
     }
-    
-    start.setHours(0, 0, 0, 0)
-    end.setHours(23, 59, 59, 999)
 
     const [slotsData, roomsData, patientsData, collaboratorsData] = await Promise.all([
       supabase
@@ -203,11 +224,20 @@ export default function SchedulePage() {
   }
 
   const filteredSlots = useMemo(() => {
-    if (activeTab === 'room' && selectedRoom && selectedRoom !== 'all') {
-      return slots.filter(s => s.room_id === selectedRoom)
+    let filtered = slots
+    
+    // Apply status filter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(s => s.status === statusFilter)
     }
-    return slots
-  }, [slots, activeTab, selectedRoom])
+    
+    // Apply room filter (for room tab)
+    if (activeTab === 'room' && selectedRoom && selectedRoom !== 'all') {
+      filtered = filtered.filter(s => s.room_id === selectedRoom)
+    }
+    
+    return filtered
+  }, [slots, activeTab, selectedRoom, statusFilter])
 
   const todaySlots = useMemo(() => {
     const today = new Date()
@@ -215,11 +245,18 @@ export default function SchedulePage() {
     const tomorrow = new Date(today)
     tomorrow.setDate(tomorrow.getDate() + 1)
     
-    return slots.filter(slot => {
+    let slotsList = slots.filter(slot => {
       const slotDate = toLocalTime(slot.scheduled_at).date
       return slotDate >= today && slotDate < tomorrow
     })
-  }, [slots])
+
+    // Apply status filter
+    if (statusFilter !== 'all') {
+      slotsList = slotsList.filter(s => s.status === statusFilter)
+    }
+
+    return slotsList
+  }, [slots, statusFilter])
 
   const weekDays = useMemo(() => {
     const days: DaySchedule[] = []
@@ -265,9 +302,21 @@ export default function SchedulePage() {
     return days
   }, [filteredSlots, currentDate])
 
+  const daySlotsForView = useMemo(() => {
+    const displayDate = new Date(currentDate)
+    displayDate.setHours(0, 0, 0, 0)
+    
+    return filteredSlots.filter(slot => {
+      const slotDate = toLocalTime(slot.scheduled_at).date
+      return slotDate.toDateString() === displayDate.toDateString()
+    })
+  }, [filteredSlots, currentDate])
+
   const navigatePeriod = (direction: number) => {
     const newDate = new Date(currentDate)
-    if (viewMode === 'week') {
+    if (viewMode === 'day') {
+      newDate.setDate(newDate.getDate() + direction)
+    } else if (viewMode === 'week') {
       newDate.setDate(newDate.getDate() + (direction * 7))
     } else {
       newDate.setMonth(newDate.getMonth() + direction)
@@ -276,7 +325,14 @@ export default function SchedulePage() {
   }
 
   const formatDateRange = (): string => {
-    if (viewMode === 'week') {
+    if (viewMode === 'day') {
+      return currentDate.toLocaleDateString('pt-BR', { 
+        weekday: 'long', 
+        day: 'numeric', 
+        month: 'long',
+        year: 'numeric'
+      })
+    } else if (viewMode === 'week') {
       const start = new Date(currentDate)
       start.setDate(start.getDate() - start.getDay())
       const end = new Date(start)
@@ -284,7 +340,7 @@ export default function SchedulePage() {
       
       const startStr = start.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
       const endStr = end.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
-      return `${startStr} - ${endStr}`
+      return `${startStr} – ${endStr}`
     } else {
       return currentDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
     }
@@ -421,11 +477,24 @@ export default function SchedulePage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
         <h1 className="text-xl sm:text-2xl font-bold">
           {activeTab === 'general' && 'Agenda Geral'}
-          {activeTab === 'today' && 'Hoje'}
-          {activeTab === 'room' && 'Agenda por Sala'}
+          {activeTab === 'today' && 'Sessões por dia'}
+          {activeTab === 'room' && 'Agenda de salas'}
         </h1>
         
         <div className="flex items-center gap-2 sm:space-x-4">
+          {/* Status Filter */}
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="border rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 text-sm bg-white"
+          >
+            <option value="all">Status de Todos</option>
+            <option value="available">Disponível</option>
+            <option value="booked">Agendado</option>
+            <option value="cancelled">Cancelado</option>
+            <option value="completed">Concluído</option>
+          </select>
+
           {activeTab === 'room' && rooms.length > 0 && (
             <select
               value={selectedRoom || ''}
@@ -448,7 +517,7 @@ export default function SchedulePage() {
             <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            Novo
+            Agendar sessão
           </button>
 
           <button
@@ -466,6 +535,16 @@ export default function SchedulePage() {
           </button>
           
           <div className="flex bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => setViewMode('day')}
+              className={`px-2 sm:px-4 py-1 sm:py-2 rounded-md text-xs sm:text-sm font-medium ${
+                viewMode === 'day' 
+                  ? 'bg-white shadow text-blue-600' 
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Dia
+            </button>
             <button
               onClick={() => setViewMode('week')}
               className={`px-2 sm:px-4 py-1 sm:py-2 rounded-md text-xs sm:text-sm font-medium ${
@@ -603,10 +682,72 @@ export default function SchedulePage() {
         </div>
       )}
 
-      {/* Week/Month View */}
+      {/* Week/Month/Day View */}
       {(activeTab === 'general' || activeTab === 'room') && (
         <>
-          {viewMode === 'week' ? (
+          {viewMode === 'day' ? (
+            <div className="bg-white rounded-lg shadow overflow-hidden">
+              {/* Day View - Hourly Grid */}
+              <div className="grid grid-cols-12 border-b">
+                <div className="col-span-2 px-2 sm:px-4 py-3 text-sm font-medium text-gray-700 bg-gray-50 border-r">
+                  Hora
+                </div>
+                <div className="col-span-10 px-2 sm:px-4 py-3 text-sm font-medium text-gray-700 bg-gray-50">
+                  {currentDate.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-12 min-h-[600px]">
+                <div className="col-span-2 bg-gray-50 border-r">
+                  {hourlySlots.map((time) => (
+                    <div key={time} className="px-2 sm:px-4 py-4 h-16 sm:h-20 text-xs sm:text-sm font-medium text-gray-600 border-b">
+                      {time}
+                    </div>
+                  ))}
+                </div>
+                
+                <div className="col-span-10">
+                  {hourlySlots.map((time) => {
+                    const slotsInHour = daySlotsForView.filter(slot => {
+                      const { time: slotTime } = toLocalTime(slot.scheduled_at)
+                      return slotTime.substring(0, 2) === time.substring(0, 2)
+                    })
+                    
+                    return (
+                      <div key={time} className="px-2 sm:px-4 py-4 h-16 sm:h-20 border-b relative">
+                        {slotsInHour.length === 0 ? (
+                          <div className="text-xs text-gray-300">-</div>
+                        ) : (
+                          slotsInHour.map(slot => {
+                            const { time: slotTime } = toLocalTime(slot.scheduled_at)
+                            return (
+                              <button
+                                key={slot.id}
+                                onClick={() => {
+                                  setSelectedSlot(slot)
+                                  setShowModal(true)
+                                }}
+                                className="w-full h-full p-1 sm:p-2 rounded-md border text-left text-xs flex flex-col justify-between group hover:shadow-md transition-shadow"
+                                style={getSlotBackground(slot)}
+                              >
+                                <div className="font-medium text-[10px] sm:text-xs">{slotTime}</div>
+                                {slot.patient && (
+                                  <div className="truncate opacity-75 text-[10px]">{slot.patient.name}</div>
+                                )}
+                                <div className="text-[8px] opacity-60">
+                                  {slot.appointment_type === 'videoconferencia' || slot.appointment_type === 'video' ? '📹' : '📍'} {getStatusLabel(slot.status)}
+                                </div>
+                              </button>
+                            )
+                          })
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+          ) : viewMode === 'week' ? (
             <div className="bg-white rounded-lg shadow overflow-hidden">
               <div className="grid grid-cols-7 border-b">
                 {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((day, i) => (
