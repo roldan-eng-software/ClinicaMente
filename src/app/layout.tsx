@@ -19,9 +19,50 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "ClínicaMente - Gestão para Psicólogos",
-  description: "Plataforma de gestão para consultórios de psicologia",
-  viewport: "width=device-width, initial-scale=1, maximum-scale=5",
+  title: {
+    default: "ClínicaMente - Software de gestão para psicólogos",
+    template: "%s | ClínicaMente",
+  },
+  description:
+    "ClínicaMente é um software de gestão para psicólogos e consultórios de psicologia, com agenda online, prontuário eletrônico, finanças e lembretes automáticos em um só lugar.",
+  keywords: [
+    "software para psicólogos",
+    "gestão para psicólogos",
+    "plataforma para clínica de psicologia",
+    "agenda online psicologia",
+    "prontuário eletrônico psicologia",
+    "sistema para consultório de psicologia",
+    "ClínicaMente",
+  ],
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    locale: "pt_BR",
+    url: "/",
+    title: "ClínicaMente - Software de gestão para psicólogos",
+    description:
+      "Centralize agenda, prontuários, finanças e lembretes automáticos em uma plataforma feita para psicólogos.",
+    siteName: "ClínicaMente",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "ClínicaMente - Software de gestão para psicólogos",
+    description:
+      "Agenda online, prontuários seguros e finanças organizadas em um só lugar.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-snippet": -1,
+      "max-image-preview": "large",
+      "max-video-preview": -1,
+    },
+  },
 };
 
 export default function RootLayout({
@@ -30,7 +71,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="pt-BR">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

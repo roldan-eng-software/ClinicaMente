@@ -1,6 +1,38 @@
+import type { Metadata } from "next";
 import Link from "next/link";
-import Image from "next/image";
 import "./landing.css";
+
+export const metadata: Metadata = {
+  title:
+    "Software de gestão para psicólogos com agenda online e prontuário eletrônico",
+  description:
+    "Conheça a ClínicaMente, a plataforma de gestão para psicólogos com agenda online, prontuário eletrônico, finanças e lembretes automáticos para reduzir faltas e organizar seu consultório.",
+};
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "SoftwareApplication",
+      name: "ClínicaMente",
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
+      inLanguage: "pt-BR",
+      description:
+        "Software de gestão para psicólogos com agenda online, prontuário eletrônico, controle financeiro e lembretes automáticos para pacientes.",
+    },
+    {
+      "@type": "Organization",
+      name: "ClínicaMente",
+      description:
+        "Plataforma de gestão para consultórios de psicologia e profissionais da saúde mental.",
+      address: {
+        "@type": "PostalAddress",
+        addressCountry: "BR",
+      },
+    },
+  ],
+};
 
 export default function Home() {
   return (
@@ -263,6 +295,10 @@ export default function Home() {
           © {new Date().getFullYear()} ClínicaMente. Todos os direitos reservados.
         </p>
       </footer>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
     </div>
   );
 }
