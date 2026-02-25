@@ -51,6 +51,7 @@ export default function Home() {
           <a href="#features">Funcionalidades</a>
           <a href="#how-it-works">Como funciona</a>
           <a href="#benefits">Benefícios</a>
+          <a href="#pricing">Planos</a>
         </nav>
 
         <div className="landing-header-actions">

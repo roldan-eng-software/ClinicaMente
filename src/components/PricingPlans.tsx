@@ -109,7 +109,7 @@ export default function PricingPlans() {
   };
 
   return (
-    <section className="pricing-section">
+    <section id="pricing" className="pricing-section">
       <div className="pricing-header">
         <h2>Planos e preços</h2>
         <p>Escolha o plano ideal para sua clínica. Sem compromisso, cancele quando quiser.</p>
