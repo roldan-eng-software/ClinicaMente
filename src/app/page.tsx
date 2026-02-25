@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import "./landing.css";
 import CookieBanner from "@/components/CookieBanner";
+import PricingPlans from "@/components/PricingPlans";
 
 export const metadata: Metadata = {
   title:
@@ -254,6 +255,8 @@ export default function Home() {
             </div>
           </div>
         </section>
+
+        <PricingPlans />
 
         <section className="landing-section landing-cta-section">
           <div className="landing-cta-panel">
