@@ -160,8 +160,12 @@
 }
 
 @media (max-width: 768px) {
+  .legal-header {
+    padding: 1rem 1.25rem;
+  }
+
   .legal-content {
-    padding: 2rem 1.5rem;
+    padding: 1.5rem 1.25rem;
   }
 
   .legal-content h1 {
@@ -170,14 +174,103 @@
 
   .legal-content h2 {
     font-size: 1.25rem;
+    margin-top: 1.75rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .legal-content h3 {
+    font-size: 1rem;
+    margin-top: 1.25rem;
+  }
+
+  .legal-content p {
+    font-size: 0.9375rem;
+  }
+
+  .legal-content ul {
+    padding-left: 1.25rem;
+  }
+
+  .legal-content li {
+    font-size: 0.9375rem;
+  }
+
+  .legal-contact {
+    padding: 1.25rem;
   }
 
   .cookies-table {
     font-size: 0.75rem;
+    display: block;
+    overflow-x: auto;
   }
 
   .cookies-table th,
   .cookies-table td {
-    padding: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    white-space: nowrap;
+  }
+
+  .legal-footer {
+    padding: 1.5rem 1rem;
+  }
+
+  .legal-footer a {
+    font-size: 0.875rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .legal-header {
+    padding: 0.875rem 1rem;
+  }
+
+  .legal-logo .landing-logo-text {
+    font-size: 1.25rem;
+  }
+
+  .legal-logo .landing-logo-mark {
+    width: 24px;
+    height: 24px;
+  }
+
+  .legal-content {
+    padding: 1.25rem 1rem;
+  }
+
+  .legal-content h1 {
+    font-size: 1.5rem;
+  }
+
+  .legal-content h2 {
+    font-size: 1.125rem;
+    margin-top: 1.5rem;
+  }
+
+  .legal-content h3 {
+    font-size: 0.9375rem;
+  }
+
+  .legal-content p,
+  .legal-content li {
+    font-size: 0.875rem;
+    line-height: 1.6;
+  }
+
+  .legal-updated {
+    font-size: 0.8125rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .cookies-table {
+    font-size: 0.6875rem;
+  }
+
+  .legal-footer {
+    padding: 1.25rem 0.75rem;
+  }
+
+  .legal-footer p {
+    font-size: 0.8125rem;
   }
 }
