@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { usePsychologist } from '../context'
+import { AppointmentCard } from '@/components/schedule/AppointmentCard'
 
 interface Room {
   id: string
@@ -18,6 +19,7 @@ interface Slot {
   room_id?: string
   appointment_type?: string
   patient_id?: string
+  collaborator_id?: string
   patient?: {
     name: string
     email: string
@@ -25,6 +27,11 @@ interface Slot {
   room?: {
     name: string
     color: string
+  }
+  collaborator?: {
+    id: string
+    full_name: string
+    specialty: string
   }
 }
 
@@ -84,6 +91,7 @@ export default function SchedulePage() {
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
   const [copied, setCopied] = useState(false)
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [collaboratorFilter, setCollaboratorFilter] = useState<string>('all')
   const [timeRangeStart, setTimeRangeStart] = useState('06:00')
   const [timeRangeEnd, setTimeRangeEnd] = useState('16:00')
   const [newAppointment, setNewAppointment] = useState({
@@ -231,13 +239,18 @@ export default function SchedulePage() {
       filtered = filtered.filter(s => s.status === statusFilter)
     }
     
+    // Apply collaborator filter
+    if (collaboratorFilter !== 'all') {
+      filtered = filtered.filter(s => s.collaborator_id === collaboratorFilter)
+    }
+    
     // Apply room filter (for room tab)
     if (activeTab === 'room' && selectedRoom && selectedRoom !== 'all') {
       filtered = filtered.filter(s => s.room_id === selectedRoom)
     }
     
     return filtered
-  }, [slots, activeTab, selectedRoom, statusFilter])
+  }, [slots, activeTab, selectedRoom, statusFilter, collaboratorFilter])
 
   const todaySlots = useMemo(() => {
     const today = new Date()
@@ -255,8 +268,13 @@ export default function SchedulePage() {
       slotsList = slotsList.filter(s => s.status === statusFilter)
     }
 
+    // Apply collaborator filter
+    if (collaboratorFilter !== 'all') {
+      slotsList = slotsList.filter(s => s.collaborator_id === collaboratorFilter)
+    }
+
     return slotsList
-  }, [slots, statusFilter])
+  }, [slots, statusFilter, collaboratorFilter])
 
   const weekDays = useMemo(() => {
     const days: DaySchedule[] = []
@@ -344,17 +362,6 @@ export default function SchedulePage() {
     } else {
       return currentDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
     }
-  }
-
-  const getSlotColor = (slot: Slot) => {
-    if (slot.status === 'booked') return 'bg-green-100 border-green-300 text-green-800'
-    if (slot.status === 'cancelled') return 'bg-red-100 border-red-300 text-red-800'
-    if (slot.status === 'completed') return 'bg-gray-100 border-gray-300 text-gray-800'
-    
-    if (slot.room?.color) {
-      return `border-l-4`
-    }
-    return 'bg-white border-gray-200 hover:border-blue-300'
   }
 
   const getSlotBackground = (slot: Slot) => {
@@ -505,6 +512,21 @@ export default function SchedulePage() {
               {rooms.map((room) => (
                 <option key={room.id} value={room.id}>
                   {room.name}
+                </option>
+              ))}
+            </select>
+          )}
+
+          {collaborators.length > 0 && (
+            <select
+              value={collaboratorFilter}
+              onChange={(e) => setCollaboratorFilter(e.target.value)}
+              className="border rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 text-sm bg-white"
+            >
+              <option value="all">Todos os colaboradores</option>
+              {collaborators.map((collab) => (
+                <option key={collab.id} value={collab.id}>
+                  {collab.full_name}
                 </option>
               ))}
             </select>
@@ -697,16 +719,17 @@ export default function SchedulePage() {
                 </div>
               </div>
               
-              <div className="grid grid-cols-12 min-h-[600px]">
-                <div className="col-span-2 bg-gray-50 border-r">
-                  {hourlySlots.map((time) => (
-                    <div key={time} className="px-2 sm:px-4 py-4 h-16 sm:h-20 text-xs sm:text-sm font-medium text-gray-600 border-b">
-                      {time}
-                    </div>
-                  ))}
-                </div>
-                
-                <div className="col-span-10">
+              <div className="overflow-x-auto">
+                <div className="grid grid-cols-12 min-h-[600px] min-w-max sm:min-w-full">
+                  <div className="col-span-2 bg-gray-50 border-r">
+                    {hourlySlots.map((time) => (
+                      <div key={time} className="px-2 sm:px-4 py-4 h-16 sm:h-20 text-xs sm:text-sm font-medium text-gray-600 border-b">
+                        {time}
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div className="col-span-10">
                   {hourlySlots.map((time) => {
                     const slotsInHour = daySlotsForView.filter(slot => {
                       const { time: slotTime } = toLocalTime(slot.scheduled_at)
@@ -718,28 +741,18 @@ export default function SchedulePage() {
                         {slotsInHour.length === 0 ? (
                           <div className="text-xs text-gray-300">-</div>
                         ) : (
-                          slotsInHour.map(slot => {
-                            const { time: slotTime } = toLocalTime(slot.scheduled_at)
-                            return (
-                              <button
-                                key={slot.id}
-                                onClick={() => {
-                                  setSelectedSlot(slot)
-                                  setShowModal(true)
-                                }}
-                                className="w-full h-full p-1 sm:p-2 rounded-md border text-left text-xs flex flex-col justify-between group hover:shadow-md transition-shadow"
-                                style={getSlotBackground(slot)}
-                              >
-                                <div className="font-medium text-[10px] sm:text-xs">{slotTime}</div>
-                                {slot.patient && (
-                                  <div className="truncate opacity-75 text-[10px]">{slot.patient.name}</div>
-                                )}
-                                <div className="text-[8px] opacity-60">
-                                  {slot.appointment_type === 'videoconferencia' || slot.appointment_type === 'video' ? '📹' : '📍'} {getStatusLabel(slot.status)}
-                                </div>
-                              </button>
-                            )
-                          })
+                          slotsInHour.map(slot => (
+                            <AppointmentCard
+                              key={slot.id}
+                              slot={slot}
+                              view="day"
+                              onClick={() => {
+                                setSelectedSlot(slot)
+                                setShowModal(true)
+                              }}
+                              toLocalTime={toLocalTime}
+                            />
+                          ))
                         )}
                       </div>
                     )
@@ -774,38 +787,18 @@ export default function SchedulePage() {
                       {day.slots.length === 0 ? (
                         <div className="text-xs text-gray-400 text-center py-2 sm:py-4">-</div>
                       ) : (
-                        day.slots.map(slot => {
-                          const { time } = toLocalTime(slot.scheduled_at)
-                          return (
-                            <button
-                              key={slot.id}
-                              onClick={() => {
-                                setSelectedSlot(slot)
-                                setShowModal(true)
-                              }}
-                              className={`w-full p-1 sm:p-2 rounded-md border text-xs text-left ${getSlotColor(slot)}`}
-                              style={getSlotBackground(slot)}
-                            >
-                              <div className="font-medium text-[10px] sm:text-xs">{time}</div>
-                              {slot.patient && (
-                                <div className="truncate opacity-75 text-[10px]">{slot.patient.name}</div>
-                              )}
-                              {activeTab === 'general' && slot.room && (
-                                <div 
-                                  className="text-[8px] mt-0.5"
-                                  style={{ color: slot.room.color }}
-                                >
-                                  {slot.room.name}
-                                </div>
-                              )}
-                              <div className="text-[8px] sm:text-[10px] opacity-60 hidden sm:block">
-                                {slot.appointment_type === 'videoconferencia' || slot.appointment_type === 'video'
-                                  ? '📹'
-                                  : '📍'} {getStatusLabel(slot.status)}
-                              </div>
-                            </button>
-                          )
-                        })
+                        day.slots.map(slot => (
+                          <AppointmentCard
+                            key={slot.id}
+                            slot={slot}
+                            view="week"
+                            onClick={() => {
+                              setSelectedSlot(slot)
+                              setShowModal(true)
+                            }}
+                            toLocalTime={toLocalTime}
+                          />
+                        ))
                       )}
                     </div>
                   </div>
