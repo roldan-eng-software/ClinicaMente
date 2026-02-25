@@ -4,9 +4,16 @@ import { Suspense, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { usePsychologist } from './context'
+import { UpcomingSessionsTable } from '@/components/dashboard/UpcomingSessionsTable'
+import { FinancialReport } from '@/components/dashboard/FinancialReport'
+import { PendenciesWidget } from '@/components/dashboard/PendenciesWidget'
+import { TasksWidget } from '@/components/dashboard/TasksWidget'
+
+type TabType = 'overview' | 'financial' | 'psiobank'
 
 function DashboardContent() {
   const [copied, setCopied] = useState(false)
+  const [activeTab, setActiveTab] = useState<TabType>('overview')
   const searchParams = useSearchParams()
   const router = useRouter()
   const supabase = createClient()
@@ -67,20 +74,79 @@ function DashboardContent() {
       )}
 
       <h1 className="text-2xl font-bold">Dashboard</h1>
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="text-3xl font-bold text-blue-600">0</div>
-          <div className="text-gray-600 mt-1">Pacientes</div>
+
+      {/* Tabs */}
+      <div className="border-b border-gray-200">
+        <div className="flex space-x-1">
+          <button
+            onClick={() => setActiveTab('overview')}
+            className={`px-4 py-3 font-medium text-sm border-b-2 ${
+              activeTab === 'overview'
+                ? 'text-blue-600 border-blue-600'
+                : 'text-gray-600 border-transparent hover:text-gray-800'
+            }`}
+          >
+            Visão Geral
+          </button>
+          <button
+            onClick={() => setActiveTab('financial')}
+            className={`px-4 py-3 font-medium text-sm border-b-2 ${
+              activeTab === 'financial'
+                ? 'text-blue-600 border-blue-600'
+                : 'text-gray-600 border-transparent hover:text-gray-800'
+            }`}
+          >
+            Financeiro
+          </button>
+          <button
+            onClick={() => setActiveTab('psiobank')}
+            className={`px-4 py-3 font-medium text-sm border-b-2 ${
+              activeTab === 'psiobank'
+                ? 'text-blue-600 border-blue-600'
+                : 'text-gray-600 border-transparent hover:text-gray-800'
+            }`}
+          >
+            PsioBank
+          </button>
         </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="text-3xl font-bold text-green-600">0</div>
-          <div className="text-gray-600 mt-1">Agendamentos</div>
-        </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="text-3xl font-bold text-purple-600">R$ 0</div>
-          <div className="text-gray-600 mt-1">Receita este mês</div>
-        </div>
+      </div>
+
+      {/* Tab Content */}
+      <div>
+        {activeTab === 'overview' && (
+          <div className="space-y-6">
+            {/* Upcoming Sessions */}
+            <UpcomingSessionsTable />
+
+            {/* Main Content Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Pendencies and Tasks */}
+              <div className="space-y-6 lg:col-span-1">
+                <PendenciesWidget />
+                <TasksWidget />
+              </div>
+
+              {/* Financial Summary - spans 2 columns */}
+              <div className="lg:col-span-2">
+                <div className="bg-white rounded-lg shadow p-6">
+                  <h2 className="text-lg font-semibold mb-4">Resumo Financeiro</h2>
+                  <p className="text-gray-600 text-sm">Veja os detalhes financeiros completos na aba "Financeiro"</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'financial' && (
+          <FinancialReport />
+        )}
+
+        {activeTab === 'psiobank' && (
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-lg font-semibold mb-4">PsioBank</h2>
+            <p className="text-gray-600">Funcionalidade em breve...</p>
+          </div>
+        )}
       </div>
     </div>
   )
