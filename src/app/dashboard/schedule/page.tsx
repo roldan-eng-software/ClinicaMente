@@ -708,9 +708,9 @@ export default function SchedulePage() {
       {(activeTab === 'general' || activeTab === 'room') && (
         <>
           {viewMode === 'day' ? (
-            <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="bg-white rounded-lg shadow overflow-hidden overflow-x-auto">
               {/* Day View - Hourly Grid */}
-              <div className="grid grid-cols-12 border-b">
+              <div className="grid grid-cols-12 border-b min-w-max">
                 <div className="col-span-2 px-2 sm:px-4 py-3 text-sm font-medium text-gray-700 bg-gray-50 border-r">
                   Hora
                 </div>
@@ -719,9 +719,8 @@ export default function SchedulePage() {
                 </div>
               </div>
               
-              <div className="overflow-x-auto">
-                <div className="grid grid-cols-12 min-h-[600px] min-w-max sm:min-w-full">
-                  <div className="col-span-2 bg-gray-50 border-r">
+              <div className="grid grid-cols-12 min-h-[600px] min-w-max">
+                <div className="col-span-2 bg-gray-50 border-r">
                     {hourlySlots.map((time) => (
                       <div key={time} className="px-2 sm:px-4 py-4 h-16 sm:h-20 text-xs sm:text-sm font-medium text-gray-600 border-b">
                         {time}
