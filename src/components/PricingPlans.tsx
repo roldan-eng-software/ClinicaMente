@@ -27,8 +27,8 @@ export default function PricingPlans() {
       id: "basic",
       name: "Básico",
       description: "Para profissionais iniciantes",
-      monthlyPrice: 49,
-      annualPrice: 490,
+      monthlyPrice: 40,
+      annualPrice: 400,
       features: [
         "Sessões ilimitadas",
         "Agenda avançada",
@@ -44,8 +44,8 @@ export default function PricingPlans() {
       id: "pro",
       name: "Pró",
       description: "O plano mais popular",
-      monthlyPrice: 74,
-      annualPrice: 740,
+      monthlyPrice: 70,
+      annualPrice: 700,
       features: [
         "Tudo do plano Básico",
         "Histórico de sessões completo",
@@ -62,8 +62,8 @@ export default function PricingPlans() {
       id: "plus",
       name: "Plus",
       description: "Para clínicas pequenas",
-      monthlyPrice: 115,
-      annualPrice: 1150,
+      monthlyPrice: 110,
+      annualPrice: 1100,
       features: [
         "Tudo do plano Pró",
         "Até 3 profissionais",
@@ -80,8 +80,8 @@ export default function PricingPlans() {
       id: "clinic",
       name: "Clínica",
       description: "Para clínicas com múltiplos profissionais",
-      monthlyPrice: 129,
-      annualPrice: 1290,
+      monthlyPrice: 120,
+      annualPrice: 1200,
       features: [
         "Tudo do plano Plus",
         "Profissionais ilimitados",
