@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { usePsychologist } from '../context'
 import { AppointmentCard } from '@/components/schedule/AppointmentCard'
+import { RoomScheduleView } from '@/components/schedule/RoomScheduleView'
 
 interface Room {
   id: string
@@ -752,8 +753,25 @@ export default function SchedulePage() {
         </div>
       )}
 
+      {/* Room Schedule View */}
+      {activeTab === 'room' && (
+        <RoomScheduleView
+          currentDate={currentDate}
+          slots={slots}
+          rooms={rooms}
+          statusFilter={statusFilter}
+          loading={loading}
+          onDateSelect={setCurrentDate}
+          onSlotClick={(slot) => {
+            setSelectedSlot(slot)
+            setShowModal(true)
+          }}
+          toLocalTime={toLocalTime}
+        />
+      )}
+
       {/* Week/Month/Day View */}
-      {(activeTab === 'general' || activeTab === 'room') && (
+      {activeTab === 'general' && (
         <>
           {viewMode === 'day' ? (
             <div className="bg-white rounded-lg shadow overflow-x-auto">
