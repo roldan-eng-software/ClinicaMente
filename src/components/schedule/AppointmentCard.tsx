@@ -77,7 +77,6 @@ export function AppointmentCard({ slot, view, onClick, toLocalTime }: Appointmen
     ? 'Videoconferência' 
     : 'Presencial'
 
-  // Calculate background color based on room
   const backgroundColor = slot.room?.color ? slot.room.color + '15' : 'transparent'
   const borderColor = slot.room?.color ? slot.room.color : '#e5e7eb'
 
@@ -94,7 +93,7 @@ export function AppointmentCard({ slot, view, onClick, toLocalTime }: Appointmen
         }}
       >
         <div className="flex items-start justify-between gap-1">
-          <div className="font-semibold text-[11px] sm:text-xs text-gray-900 flex-shrink-0">{time}</div>
+          <div className="font-semibold text-xs text-gray-900 flex-shrink-0">{time}</div>
           {slot.room && (
             <div
               className="w-2 h-2 rounded-full flex-shrink-0 mt-0.5"
@@ -105,20 +104,20 @@ export function AppointmentCard({ slot, view, onClick, toLocalTime }: Appointmen
         </div>
         
         {slot.patient && (
-          <div className="truncate opacity-90 text-[11px] font-medium mt-1 text-gray-800">{slot.patient.name}</div>
+          <div className="truncate opacity-90 text-xs font-medium mt-1 text-gray-800">{slot.patient.name}</div>
         )}
 
-        <div className="flex items-center gap-1 mt-1 text-[9px] opacity-70">
+        <div className="flex items-center gap-1 mt-1 text-xs opacity-70">
           {getAppointmentTypeIcon(slot.appointment_type)}
-          <span>{appointmentType}</span>
+          <span className="hidden sm:inline">{appointmentType}</span>
         </div>
 
         {slot.collaborator && (
-          <div className="text-[8px] opacity-60 truncate mt-0.5 text-gray-700">{slot.collaborator.full_name}</div>
+          <div className="text-xs opacity-60 truncate mt-0.5 text-gray-700 hidden sm:block">{slot.collaborator.full_name}</div>
         )}
 
         <div className="mt-1 flex-shrink-0">
-          <span className={`inline-block px-2 py-1 rounded text-[7px] font-semibold ${getStatusBadgeColor(slot.status)}`}>
+          <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${getStatusBadgeColor(slot.status)}`}>
             {getStatusLabel(slot.status)}
           </span>
         </div>
@@ -137,22 +136,22 @@ export function AppointmentCard({ slot, view, onClick, toLocalTime }: Appointmen
           borderLeftWidth: slot.room?.color ? '3px' : '1px'
         }}
       >
-        <div className="font-semibold text-[11px] sm:text-xs text-gray-900">{time}</div>
+        <div className="font-semibold text-xs text-gray-900">{time}</div>
         
         {slot.patient && (
-          <div className="truncate opacity-85 text-[10px] mt-1 text-gray-800">{slot.patient.name}</div>
+          <div className="truncate opacity-85 text-xs mt-1 text-gray-800">{slot.patient.name}</div>
         )}
 
         {slot.room && (
           <div
-            className="text-[8px] mt-1 font-medium"
+            className="text-xs mt-1 font-medium"
             style={{ color: slot.room.color }}
           >
             {slot.room.name}
           </div>
         )}
 
-        <div className="flex items-center gap-1 mt-1 text-[8px] opacity-70">
+        <div className="flex items-center gap-1 mt-1 text-xs opacity-70">
           {getAppointmentTypeIcon(slot.appointment_type)}
           <span>{getStatusLabel(slot.status)}</span>
         </div>
@@ -160,16 +159,19 @@ export function AppointmentCard({ slot, view, onClick, toLocalTime }: Appointmen
     )
   }
 
-  // Month view
   return (
-    <div className="text-xs space-y-1 p-1 rounded-md border border-transparent hover:border-gray-300 transition-colors" style={{ backgroundColor }}>
-      <div className="font-semibold text-[11px] text-gray-900">{time}</div>
+    <button
+      onClick={onClick}
+      className="w-full text-xs space-y-1 p-1 rounded-md border border-transparent hover:border-gray-300 transition-colors text-left"
+      style={{ backgroundColor }}
+    >
+      <div className="font-semibold text-xs text-gray-900">{time}</div>
       {slot.patient && (
-        <div className="text-[10px] truncate opacity-85 text-gray-800">{slot.patient.name}</div>
+        <div className="text-xs truncate opacity-85 text-gray-800">{slot.patient.name}</div>
       )}
-      <div className={`inline-block px-2 py-1 rounded text-[7px] font-semibold ${getStatusBadgeColor(slot.status)}`}>
+      <div className={`inline-block px-2 py-1 rounded text-xs font-semibold ${getStatusBadgeColor(slot.status)}`}>
         {getStatusLabel(slot.status)}
       </div>
-    </div>
+    </button>
   )
 }

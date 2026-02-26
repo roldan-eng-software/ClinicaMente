@@ -457,17 +457,62 @@ export default function SchedulePage() {
     }
   }
 
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Tabs */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      {/* Tabs - Mobile */}
+      <div className="bg-white rounded-lg shadow overflow-hidden lg:hidden">
         <div className="border-b">
-          <nav className="flex -mb-px overflow-x-auto" aria-label="Tabs">
+          <div className="flex items-center justify-between px-4 py-3">
+            <span className="font-medium text-gray-900">
+              {TABS.find(t => t.id === activeTab)?.label}
+            </span>
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="p-2 rounded-md hover:bg-gray-100"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {mobileMenuOpen ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                )}
+              </svg>
+            </button>
+          </div>
+          {mobileMenuOpen && (
+            <nav className="border-t" aria-label="Tabs">
+              {TABS.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    setActiveTab(tab.id)
+                    setMobileMenuOpen(false)
+                  }}
+                  className={`w-full text-left px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                    activeTab === tab.id
+                      ? 'border-blue-500 text-blue-600 bg-blue-50'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </nav>
+          )}
+        </div>
+      </div>
+
+      {/* Tabs - Desktop */}
+      <div className="bg-white rounded-lg shadow overflow-hidden hidden lg:block">
+        <div className="border-b">
+          <nav className="flex -mb-px" aria-label="Tabs">
             {TABS.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 min-w-0 whitespace-nowrap py-3 px-4 text-sm font-medium text-center border-b-2 transition-colors ${
+                className={`flex-1 whitespace-nowrap py-4 px-6 text-sm font-medium text-center border-b-2 transition-colors ${
                   activeTab === tab.id
                     ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -481,21 +526,21 @@ export default function SchedulePage() {
       </div>
 
       {/* Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
         <h1 className="text-xl sm:text-2xl font-bold">
           {activeTab === 'general' && 'Agenda Geral'}
           {activeTab === 'today' && 'Sessões por dia'}
           {activeTab === 'room' && 'Agenda de salas'}
         </h1>
         
-        <div className="flex items-center gap-2 sm:space-x-4">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Status Filter */}
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="border rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 text-sm bg-white"
+            className="border rounded-lg px-2 py-2 text-sm bg-white min-w-[120px]"
           >
-            <option value="all">Status de Todos</option>
+            <option value="all">Status</option>
             <option value="available">Disponível</option>
             <option value="booked">Agendado</option>
             <option value="cancelled">Cancelado</option>
@@ -506,9 +551,9 @@ export default function SchedulePage() {
             <select
               value={selectedRoom || ''}
               onChange={(e) => setSelectedRoom(e.target.value)}
-              className="border rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 text-sm"
+              className="border rounded-lg px-2 py-2 text-sm min-w-[120px]"
             >
-              <option value="all">Todas as salas</option>
+              <option value="all">Salas</option>
               {rooms.map((room) => (
                 <option key={room.id} value={room.id}>
                   {room.name}
@@ -521,9 +566,9 @@ export default function SchedulePage() {
             <select
               value={collaboratorFilter}
               onChange={(e) => setCollaboratorFilter(e.target.value)}
-              className="border rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 text-sm bg-white"
+              className="border rounded-lg px-2 py-2 text-sm bg-white min-w-[140px]"
             >
-              <option value="all">Todos os colaboradores</option>
+              <option value="all">Colaborador</option>
               {collaborators.map((collab) => (
                 <option key={collab.id} value={collab.id}>
                   {collab.full_name}
@@ -534,58 +579,61 @@ export default function SchedulePage() {
 
           <button
             onClick={() => setShowNewAppointmentModal(true)}
-            className="flex items-center px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-xs sm:text-sm font-medium"
+            className="flex items-center px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
           >
             <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            Agendar sessão
+            <span className="hidden sm:inline">Agendar sessão</span>
+            <span className="sm:hidden">Agendar</span>
           </button>
 
           <button
             onClick={copyBookingLink}
-            className={`flex items-center px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium ${
+            className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium ${
               copied 
                 ? 'bg-green-100 text-green-700 border border-green-300' 
                 : 'bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200'
             }`}
           >
-            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
             </svg>
-            {copied ? 'Link Copiado!' : 'Copiar Link'}
           </button>
           
           <div className="flex bg-gray-100 rounded-lg p-1">
             <button
               onClick={() => setViewMode('day')}
-              className={`px-2 sm:px-4 py-1 sm:py-2 rounded-md text-xs sm:text-sm font-medium ${
+              className={`px-2 sm:px-3 py-1.5 rounded-md text-xs font-medium ${
                 viewMode === 'day' 
                   ? 'bg-white shadow text-blue-600' 
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              Dia
+              <span className="hidden sm:inline">Dia</span>
+              <span className="sm:hidden">D</span>
             </button>
             <button
               onClick={() => setViewMode('week')}
-              className={`px-2 sm:px-4 py-1 sm:py-2 rounded-md text-xs sm:text-sm font-medium ${
+              className={`px-2 sm:px-3 py-1.5 rounded-md text-xs font-medium ${
                 viewMode === 'week' 
                   ? 'bg-white shadow text-blue-600' 
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              Semana
+              <span className="hidden sm:inline">Semana</span>
+              <span className="sm:hidden">S</span>
             </button>
             <button
               onClick={() => setViewMode('month')}
-              className={`px-2 sm:px-4 py-1 sm:py-2 rounded-md text-xs sm:text-sm font-medium ${
+              className={`px-2 sm:px-3 py-1.5 rounded-md text-xs font-medium ${
                 viewMode === 'month' 
                   ? 'bg-white shadow text-blue-600' 
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              Mês
+              <span className="hidden sm:inline">Mês</span>
+              <span className="sm:hidden">M</span>
             </button>
           </div>
         </div>
@@ -708,21 +756,21 @@ export default function SchedulePage() {
       {(activeTab === 'general' || activeTab === 'room') && (
         <>
           {viewMode === 'day' ? (
-            <div className="bg-white rounded-lg shadow overflow-hidden overflow-x-auto">
+            <div className="bg-white rounded-lg shadow overflow-x-auto">
               {/* Day View - Hourly Grid */}
-              <div className="grid grid-cols-12 border-b min-w-max">
-                <div className="col-span-2 px-2 sm:px-4 py-3 text-sm font-medium text-gray-700 bg-gray-50 border-r">
+              <div className="grid grid-cols-12 border-b min-w-[500px]">
+                <div className="col-span-2 px-2 py-3 text-sm font-medium text-gray-700 bg-gray-50 border-r">
                   Hora
                 </div>
-                <div className="col-span-10 px-2 sm:px-4 py-3 text-sm font-medium text-gray-700 bg-gray-50">
+                <div className="col-span-10 px-2 py-3 text-sm font-medium text-gray-700 bg-gray-50">
                   {currentDate.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
                 </div>
               </div>
               
-              <div className="grid grid-cols-12 min-h-[600px] min-w-max">
+              <div className="grid grid-cols-12 min-h-[600px] min-w-[500px]">
                 <div className="col-span-2 bg-gray-50 border-r">
                     {hourlySlots.map((time) => (
-                      <div key={time} className="px-2 sm:px-4 py-4 h-16 sm:h-20 text-xs sm:text-sm font-medium text-gray-600 border-b">
+                      <div key={time} className="px-2 py-4 h-20 text-sm font-medium text-gray-600 border-b">
                         {time}
                       </div>
                     ))}
@@ -736,7 +784,7 @@ export default function SchedulePage() {
                     })
                     
                     return (
-                      <div key={time} className="px-2 sm:px-4 py-4 h-16 sm:h-20 border-b relative">
+                      <div key={time} className="px-2 py-4 h-20 border-b relative">
                         {slotsInHour.length === 0 ? (
                           <div className="text-xs text-gray-300">-</div>
                         ) : (
@@ -760,31 +808,32 @@ export default function SchedulePage() {
               </div>
             </div>
           ) : viewMode === 'week' ? (
-            <div className="bg-white rounded-lg shadow overflow-hidden">
-              <div className="grid grid-cols-7 border-b">
+            <div className="bg-white rounded-lg shadow overflow-x-auto">
+              <div className="grid grid-cols-7 border-b min-w-[600px]">
                 {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((day, i) => (
-                  <div key={i} className="px-1 sm:px-2 py-2 sm:py-3 text-center text-xs sm:text-sm font-medium text-gray-500 bg-gray-50">
-                    {day}
+                  <div key={i} className="px-2 py-3 text-center text-sm font-medium text-gray-500 bg-gray-50">
+                    <span className="hidden sm:inline">{day}</span>
+                    <span className="sm:hidden">{day.charAt(0)}</span>
                   </div>
                 ))}
               </div>
               
-              <div className="grid grid-cols-7 min-h-[300px] sm:min-h-[400px]">
+              <div className="grid grid-cols-7 min-h-[300px] sm:min-h-[400px] min-w-[600px]">
                 {weekDays.map((day, i) => (
                   <div key={i} className="border-r last:border-r-0">
-                    <div className={`px-1 sm:px-2 py-1 sm:py-2 text-center text-xs sm:text-sm border-b ${
+                    <div className={`px-2 py-2 text-center text-sm border-b ${
                       day.date.toDateString() === new Date().toDateString()
                         ? 'bg-blue-50 font-semibold text-blue-600'
                         : 'bg-gray-50'
                     }`}>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-sm text-gray-700">
                         {day.date.toLocaleDateString('pt-BR', { day: 'numeric' })}
                       </div>
                     </div>
                     
-                    <div className="p-1 sm:p-2 space-y-1 sm:space-y-2 max-h-[300px] sm:max-h-[400px] overflow-y-auto">
+                    <div className="p-2 space-y-2 max-h-[300px] sm:max-h-[400px] overflow-y-auto">
                       {day.slots.length === 0 ? (
-                        <div className="text-xs text-gray-400 text-center py-2 sm:py-4">-</div>
+                        <div className="text-xs text-gray-400 text-center py-4">-</div>
                       ) : (
                         day.slots.map(slot => (
                           <AppointmentCard
@@ -816,7 +865,7 @@ export default function SchedulePage() {
               
               <div className="grid grid-cols-7">
                 {Array.from({ length: monthDays[0]?.date.getDay() || 0 }).map((_, i) => (
-                  <div key={`empty-${i}`} className="min-h-[60px] sm:min-h-[100px] border-b border-r bg-gray-50" />
+                  <div key={`empty-${i}`} className="min-h-[80px] sm:min-h-[100px] border-b border-r bg-gray-50" />
                 ))}
                 
                 {monthDays.map((day, i) => {
@@ -824,15 +873,19 @@ export default function SchedulePage() {
                   const availableCount = day.slots.filter(s => s.status === 'available').length
                   
                   return (
-                    <div 
+                    <button 
                       key={i} 
-                      className={`min-h-[60px] sm:min-h-[100px] border-b border-r p-1 sm:p-2 ${
+                      onClick={() => {
+                        setCurrentDate(day.date)
+                        setViewMode('day')
+                      }}
+                      className={`min-h-[80px] sm:min-h-[100px] border-b border-r p-2 hover:bg-gray-50 transition-colors ${
                         day.date.toDateString() === new Date().toDateString()
                           ? 'bg-blue-50'
                           : ''
                       }`}
                     >
-                      <div className={`text-xs sm:text-sm font-medium mb-0 sm:mb-1 ${
+                      <div className={`text-sm font-medium mb-1 ${
                         day.date.toDateString() === new Date().toDateString()
                           ? 'text-blue-600'
                           : 'text-gray-700'
@@ -841,12 +894,12 @@ export default function SchedulePage() {
                       </div>
                       
                       {bookedCount > 0 && (
-                        <div className="text-[10px] sm:text-xs text-green-600 font-medium">{bookedCount} agendado(s)</div>
+                        <div className="text-xs text-green-600 font-medium">{bookedCount} agendado(s)</div>
                       )}
                       {availableCount > 0 && (
-                        <div className="text-[10px] sm:text-xs text-gray-500">{availableCount} disponível(is)</div>
+                        <div className="text-xs text-gray-500">{availableCount} disponível(is)</div>
                       )}
-                    </div>
+                    </button>
                   )
                 })}
               </div>
@@ -857,82 +910,95 @@ export default function SchedulePage() {
 
       {/* Slot Detail Modal */}
       {showModal && selectedSlot && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl p-4 sm:p-6 w-full max-w-sm sm:max-w-md">
-            <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Detalhes do Horário</h3>
-            
-            <div className="space-y-3 sm:space-y-4">
-              <div>
-                <label className="text-sm text-gray-500">Data e Hora</label>
-                <p className="font-medium text-sm sm:text-base">
-                  {toLocalTime(selectedSlot.scheduled_at).date.toLocaleDateString('pt-BR', {
-                    weekday: 'long',
-                    day: 'numeric',
-                    month: 'long'
-                  })} às {toLocalTime(selectedSlot.scheduled_at).time}
-                </p>
-              </div>
-              
-              <div>
-                <label className="text-sm text-gray-500">Tipo de Atendimento</label>
-                <p className="font-medium text-sm sm:text-base flex items-center">
-                  {getAppointmentTypeIcon(selectedSlot.appointment_type)}
-                  <span className="ml-1">
-                    {selectedSlot.appointment_type === 'videoconferencia' || selectedSlot.appointment_type === 'video' 
-                      ? 'Videoconferência' 
-                      : 'Presencial'}
-                  </span>
-                </p>
-              </div>
-
-              {selectedSlot.room && (
-                <div>
-                  <label className="text-sm text-gray-500">Sala</label>
-                  <p className="font-medium text-sm sm:text-base flex items-center">
-                    <span 
-                      className="w-3 h-3 rounded-full mr-2" 
-                      style={{ backgroundColor: selectedSlot.room.color }}
-                    />
-                    {selectedSlot.room.name}
-                  </p>
-                </div>
-              )}
-              
-              <div>
-                <label className="text-sm text-gray-500">Status</label>
-                <p className={`font-medium text-sm sm:text-base ${
-                  selectedSlot.status === 'booked' ? 'text-green-600' :
-                  selectedSlot.status === 'available' ? 'text-blue-600' :
-                  'text-gray-600'
-                }`}>
-                  {getStatusLabel(selectedSlot.status)}
-                </p>
-              </div>
-              
-              {selectedSlot.patient && (
-                <div>
-                  <label className="text-sm text-gray-500">Paciente</label>
-                  <p className="font-medium text-sm sm:text-base">{selectedSlot.patient.name}</p>
-                  <p className="text-xs sm:text-sm text-gray-500">{selectedSlot.patient.email}</p>
-                </div>
-              )}
-              
-              {selectedSlot.status === 'available' && (
-                <div className="bg-blue-50 p-3 sm:p-4 rounded-lg">
-                  <p className="text-sm text-blue-700">
-                    Este horário está disponível para agendamento.
-                  </p>
-                </div>
-              )}
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+          <div className="bg-white rounded-t-2xl sm:rounded-lg shadow-xl w-full sm:max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b px-4 py-3 sm:hidden flex items-center justify-between">
+              <h3 className="font-semibold">Detalhes do Horário</h3>
+              <button onClick={() => setShowModal(false)} className="p-1">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
             
-            <div className="flex justify-end space-x-2 sm:space-x-3 mt-4 sm:mt-6">
-              <button
-                onClick={() => setShowModal(false)}
-                className="px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
-              >
-                Fechar
-              </button>
+            <div className="p-4 sm:p-6 space-y-4">
+              <div className="hidden sm:block">
+                <h3 className="text-lg font-semibold">Detalhes do Horário</h3>
+              </div>
+            
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm text-gray-500">Data e Hora</label>
+                  <p className="font-medium">
+                    {toLocalTime(selectedSlot.scheduled_at).date.toLocaleDateString('pt-BR', {
+                      weekday: 'long',
+                      day: 'numeric',
+                      month: 'long'
+                    })} às {toLocalTime(selectedSlot.scheduled_at).time}
+                  </p>
+                </div>
+                
+                <div>
+                  <label className="text-sm text-gray-500">Tipo de Atendimento</label>
+                  <p className="font-medium flex items-center">
+                    {getAppointmentTypeIcon(selectedSlot.appointment_type)}
+                    <span className="ml-1">
+                      {selectedSlot.appointment_type === 'videoconferencia' || selectedSlot.appointment_type === 'video' 
+                        ? 'Videoconferência' 
+                        : 'Presencial'}
+                    </span>
+                  </p>
+                </div>
+
+                {selectedSlot.room && (
+                  <div>
+                    <label className="text-sm text-gray-500">Sala</label>
+                    <p className="font-medium flex items-center">
+                      <span 
+                        className="w-3 h-3 rounded-full mr-2" 
+                        style={{ backgroundColor: selectedSlot.room.color }}
+                      />
+                      {selectedSlot.room.name}
+                    </p>
+                  </div>
+                )}
+                
+                <div>
+                  <label className="text-sm text-gray-500">Status</label>
+                  <p className={`font-medium ${
+                    selectedSlot.status === 'booked' ? 'text-green-600' :
+                    selectedSlot.status === 'available' ? 'text-blue-600' :
+                    'text-gray-600'
+                  }`}>
+                    {getStatusLabel(selectedSlot.status)}
+                  </p>
+                </div>
+                
+                {selectedSlot.patient && (
+                  <div>
+                    <label className="text-sm text-gray-500">Paciente</label>
+                    <p className="font-medium">{selectedSlot.patient.name}</p>
+                    <p className="text-sm text-gray-500">{selectedSlot.patient.email}</p>
+                  </div>
+                )}
+                
+                {selectedSlot.status === 'available' && (
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <p className="text-sm text-blue-700">
+                      Este horário está disponível para agendamento.
+                    </p>
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex justify-end pt-2">
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="w-full sm:w-auto px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Fechar
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -940,142 +1006,151 @@ export default function SchedulePage() {
 
       {/* New Appointment Modal */}
       {showNewAppointmentModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl p-4 sm:p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4">Novo Agendamento</h3>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+          <div className="bg-white rounded-t-2xl sm:rounded-lg shadow-xl w-full sm:max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b px-4 py-3 flex items-center justify-between">
+              <h3 className="font-semibold">Novo Agendamento</h3>
+              <button onClick={() => setShowNewAppointmentModal(false)} className="p-1">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
 
-            {message && (
-              <div className={`p-3 rounded-lg mb-4 text-sm ${
-                message.type === 'error' ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'
-              }`}>
-                {message.text}
-              </div>
-            )}
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Paciente *
-                </label>
-                <select
-                  value={newAppointment.patientId}
-                  onChange={(e) => setNewAppointment({ ...newAppointment, patientId: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2"
-                  required
-                >
-                  <option value="">Selecione um paciente</option>
-                  {patients.map((patient) => (
-                    <option key={patient.id} value={patient.id}>
-                      {patient.full_name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Data *
-                  </label>
-                  <input
-                    type="date"
-                    value={newAppointment.date}
-                    onChange={(e) => setNewAppointment({ ...newAppointment, date: e.target.value })}
-                    className="w-full border rounded-lg px-3 py-2"
-                    required
-                  />
+            <div className="p-4 sm:p-6">
+              {message && (
+                <div className={`p-3 rounded-lg mb-4 text-sm ${
+                  message.type === 'error' ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'
+                }`}>
+                  {message.text}
                 </div>
+              )}
+
+              <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Hora *
+                    Paciente *
                   </label>
                   <select
-                    value={newAppointment.time}
-                    onChange={(e) => setNewAppointment({ ...newAppointment, time: e.target.value })}
-                    className="w-full border rounded-lg px-3 py-2"
+                    value={newAppointment.patientId}
+                    onChange={(e) => setNewAppointment({ ...newAppointment, patientId: e.target.value })}
+                    className="w-full border rounded-lg px-3 py-2.5"
                     required
                   >
-                    {timeOptions.map((time) => (
-                      <option key={time} value={time}>{time}</option>
+                    <option value="">Selecione um paciente</option>
+                    {patients.map((patient) => (
+                      <option key={patient.id} value={patient.id}>
+                        {patient.full_name}
+                      </option>
                     ))}
                   </select>
                 </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Data *
+                    </label>
+                    <input
+                      type="date"
+                      value={newAppointment.date}
+                      onChange={(e) => setNewAppointment({ ...newAppointment, date: e.target.value })}
+                      className="w-full border rounded-lg px-3 py-2.5"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Hora *
+                    </label>
+                    <select
+                      value={newAppointment.time}
+                      onChange={(e) => setNewAppointment({ ...newAppointment, time: e.target.value })}
+                      className="w-full border rounded-lg px-3 py-2.5"
+                      required
+                    >
+                      {timeOptions.map((time) => (
+                        <option key={time} value={time}>{time}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Sala
+                  </label>
+                  <select
+                    value={newAppointment.roomId}
+                    onChange={(e) => setNewAppointment({ ...newAppointment, roomId: e.target.value })}
+                    className="w-full border rounded-lg px-3 py-2.5"
+                  >
+                    <option value="">Selecione uma sala</option>
+                    {rooms.map((room) => (
+                      <option key={room.id} value={room.id}>{room.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Tipo de Atendimento
+                  </label>
+                  <select
+                    value={newAppointment.appointmentType}
+                    onChange={(e) => setNewAppointment({ ...newAppointment, appointmentType: e.target.value })}
+                    className="w-full border rounded-lg px-3 py-2.5"
+                  >
+                    <option value="presencial">Presencial</option>
+                    <option value="videoconferencia">Videoconferência</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Colaborador
+                  </label>
+                  <select
+                    value={newAppointment.collaboratorId}
+                    onChange={(e) => setNewAppointment({ ...newAppointment, collaboratorId: e.target.value })}
+                    className="w-full border rounded-lg px-3 py-2.5"
+                  >
+                    <option value="">Selecione um colaborador</option>
+                    {collaborators.map((collab) => (
+                      <option key={collab.id} value={collab.id}>{collab.full_name} - {collab.specialty}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Observações
+                  </label>
+                  <textarea
+                    value={newAppointment.notes}
+                    onChange={(e) => setNewAppointment({ ...newAppointment, notes: e.target.value })}
+                    className="w-full border rounded-lg px-3 py-2.5"
+                    rows={2}
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Sala
-                </label>
-                <select
-                  value={newAppointment.roomId}
-                  onChange={(e) => setNewAppointment({ ...newAppointment, roomId: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2"
+              <div className="flex flex-col sm:flex-row gap-3 mt-6">
+                <button
+                  onClick={() => setShowNewAppointmentModal(false)}
+                  className="w-full sm:w-auto px-4 py-2.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
+                  disabled={saving}
                 >
-                  <option value="">Selecione uma sala</option>
-                  {rooms.map((room) => (
-                    <option key={room.id} value={room.id}>{room.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tipo de Atendimento
-                </label>
-                <select
-                  value={newAppointment.appointmentType}
-                  onChange={(e) => setNewAppointment({ ...newAppointment, appointmentType: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2"
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleCreateAppointment}
+                  disabled={saving || !newAppointment.patientId || !newAppointment.date || !newAppointment.time}
+                  className="w-full sm:w-auto px-4 py-2.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
                 >
-                  <option value="presencial">Presencial</option>
-                  <option value="videoconferencia">Videoconferência</option>
-                </select>
+                  {saving ? 'Salvando...' : 'Criar Agendamento'}
+                </button>
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Colaborador
-                </label>
-                <select
-                  value={newAppointment.collaboratorId}
-                  onChange={(e) => setNewAppointment({ ...newAppointment, collaboratorId: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2"
-                >
-                  <option value="">Selecione um colaborador</option>
-                  {collaborators.map((collab) => (
-                    <option key={collab.id} value={collab.id}>{collab.full_name} - {collab.specialty}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Observações
-                </label>
-                <textarea
-                  value={newAppointment.notes}
-                  onChange={(e) => setNewAppointment({ ...newAppointment, notes: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2"
-                  rows={2}
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end space-x-3 mt-6">
-              <button
-                onClick={() => setShowNewAppointmentModal(false)}
-                className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
-                disabled={saving}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleCreateAppointment}
-                disabled={saving || !newAppointment.patientId || !newAppointment.date || !newAppointment.time}
-                className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-              >
-                {saving ? 'Salvando...' : 'Criar Agendamento'}
-              </button>
             </div>
           </div>
         </div>
