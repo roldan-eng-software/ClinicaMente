@@ -60,6 +60,11 @@ export default function PatientDetailPage() {
   const [isPro, setIsPro] = useState(false)
   const [savingNote, setSavingNote] = useState(false)
   const [newNote, setNewNote] = useState('')
+  const [isEditing, setIsEditing] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [formData, setFormData] = useState<Partial<Patient>>({})
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
 
   useEffect(() => {
     checkPlanAndLoadData()
@@ -89,6 +94,7 @@ export default function PatientDetailPage() {
     }
 
     setPatient(patientData)
+    setFormData(patientData)
 
     const { data: appointmentsData } = await supabase
       .from('appointments')
@@ -133,6 +139,81 @@ export default function PatientDetailPage() {
     }
 
     setLoading(false)
+  }
+
+  async function savePatientChanges() {
+    if (!patient) return
+
+    setError(null)
+    setSuccess(null)
+    setIsSaving(true)
+
+    try {
+      const { error: updateError } = await supabase
+        .from('patients')
+        .update({
+          full_name: formData.full_name || patient.full_name,
+          email: formData.email || patient.email,
+          phone: formData.phone || patient.phone,
+          cpf: formData.cpf || patient.cpf,
+          date_of_birth: formData.date_of_birth || patient.date_of_birth,
+          address: formData.address || patient.address,
+          notes: formData.notes !== undefined ? formData.notes : patient.notes,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', patient.id)
+        .eq('psychologist_id', psychologist.id)
+
+      if (updateError) {
+        setError('Erro ao salvar alterações. Tente novamente.')
+        console.error('Update error:', updateError)
+      } else {
+        setSuccess('Alterações salvas com sucesso!')
+        // Atualizar o estado local
+        const updatedPatient = {
+          ...patient,
+          full_name: formData.full_name || patient.full_name,
+          email: formData.email || patient.email,
+          phone: formData.phone || patient.phone,
+          cpf: formData.cpf || patient.cpf,
+          date_of_birth: formData.date_of_birth || patient.date_of_birth,
+          address: formData.address || patient.address,
+          notes: formData.notes !== undefined ? formData.notes : patient.notes,
+          updated_at: new Date().toISOString(),
+        }
+        setPatient(updatedPatient)
+        setIsEditing(false)
+        setFormData({})
+        
+        // Limpar mensagem de sucesso após 3 segundos
+        setTimeout(() => setSuccess(null), 3000)
+      }
+    } catch (err) {
+      setError('Erro inesperado ao salvar alterações.')
+      console.error('Save error:', err)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  function handleEditClick() {
+    if (isEditing) {
+      // Cancelar edição
+      setFormData({})
+      setIsEditing(false)
+      setError(null)
+    } else {
+      // Começar edição
+      setIsEditing(true)
+      setSuccess(null)
+    }
+  }
+
+  const handleInputChange = (field: keyof Patient, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }))
   }
 
   async function saveNote() {
@@ -294,36 +375,146 @@ export default function PatientDetailPage() {
 
         <div className="p-6">
           {activeTab === 'info' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm text-gray-500">Email</label>
-                <p className="font-medium">{patient.email}</p>
+            <>
+              {/* Mensagens de sucesso e erro */}
+              {error && (
+                <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-sm text-red-800">{error}</p>
+                </div>
+              )}
+              {success && (
+                <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-sm text-green-800">{success}</p>
+                </div>
+              )}
+
+              {/* Botões Editar/Salvar */}
+              <div className="mb-6 flex gap-3">
+                {!isEditing ? (
+                  <button
+                    onClick={handleEditClick}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                    Editar
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      onClick={savePatientChanges}
+                      disabled={isSaving}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors flex items-center gap-2"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      {isSaving ? 'Salvando...' : 'Salvar'}
+                    </button>
+                    <button
+                      onClick={handleEditClick}
+                      disabled={isSaving}
+                      className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 disabled:opacity-50 transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                  </>
+                )}
               </div>
-              <div>
-                <label className="block text-sm text-gray-500">Telefone</label>
-                <p className="font-medium">{patient.phone || '-'}</p>
+
+              {/* Formulário */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm text-gray-500 mb-1">Email</label>
+                  {isEditing ? (
+                    <input
+                      type="email"
+                      value={formData.email || patient.email}
+                      onChange={(e) => handleInputChange('email', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  ) : (
+                    <p className="font-medium">{patient.email}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-500 mb-1">Telefone</label>
+                  {isEditing ? (
+                    <input
+                      type="tel"
+                      value={formData.phone || patient.phone || ''}
+                      onChange={(e) => handleInputChange('phone', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  ) : (
+                    <p className="font-medium">{patient.phone || '-'}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-500 mb-1">CPF</label>
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      value={formData.cpf || patient.cpf || ''}
+                      onChange={(e) => handleInputChange('cpf', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  ) : (
+                    <p className="font-medium">{patient.cpf || '-'}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-500 mb-1">Data de Nascimento</label>
+                  {isEditing ? (
+                    <input
+                      type="date"
+                      value={formData.date_of_birth ? formData.date_of_birth.split('T')[0] : (patient.date_of_birth ? patient.date_of_birth.split('T')[0] : '')}
+                      onChange={(e) => handleInputChange('date_of_birth', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  ) : (
+                    <p className="font-medium">{patient.date_of_birth ? formatDate(patient.date_of_birth) : '-'}</p>
+                  )}
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm text-gray-500 mb-1">Endereço</label>
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      value={formData.address || patient.address || ''}
+                      onChange={(e) => handleInputChange('address', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  ) : (
+                    <p className="font-medium">{patient.address || '-'}</p>
+                  )}
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm text-gray-500 mb-1">Observações</label>
+                  {isEditing ? (
+                    <textarea
+                      value={formData.notes !== undefined ? formData.notes : (patient.notes || '')}
+                      onChange={(e) => handleInputChange('notes', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      rows={4}
+                    />
+                  ) : (
+                    <p className="font-medium">{patient.notes || '-'}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-500 mb-1">Cadastrado em</label>
+                  <p className="font-medium">{formatDate(patient.created_at)}</p>
+                </div>
+                {patient.updated_at && (
+                  <div>
+                    <label className="block text-sm text-gray-500 mb-1">Editado em</label>
+                    <p className="font-medium">{formatDate(patient.updated_at)}</p>
+                  </div>
+                )}
               </div>
-              <div>
-                <label className="block text-sm text-gray-500">CPF</label>
-                <p className="font-medium">{patient.cpf || '-'}</p>
-              </div>
-              <div>
-                <label className="block text-sm text-gray-500">Data de Nascimento</label>
-                <p className="font-medium">{patient.date_of_birth ? formatDate(patient.date_of_birth) : '-'}</p>
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-sm text-gray-500">Endereço</label>
-                <p className="font-medium">{patient.address || '-'}</p>
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-sm text-gray-500">Observações</label>
-                <p className="font-medium">{patient.notes || '-'}</p>
-              </div>
-              <div>
-                <label className="block text-sm text-gray-500">Cadastrado em</label>
-                <p className="font-medium">{formatDate(patient.created_at)}</p>
-              </div>
-            </div>
+            </>
           )}
 
           {activeTab === 'appointments' && (
