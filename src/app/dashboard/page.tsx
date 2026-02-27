@@ -8,6 +8,7 @@ import { UpcomingSessionsTable } from '@/components/dashboard/UpcomingSessionsTa
 import { FinancialReport } from '@/components/dashboard/FinancialReport'
 import { PendenciesWidget } from '@/components/dashboard/PendenciesWidget'
 import { TasksWidget } from '@/components/dashboard/TasksWidget'
+import { FinancialSummaryWidget } from '@/components/dashboard/FinancialSummaryWidget'
 
 type TabType = 'overview' | 'financial' | 'psiobank'
 
@@ -128,10 +129,7 @@ function DashboardContent() {
 
               {/* Financial Summary - spans 2 columns */}
               <div className="lg:col-span-2">
-                <div className="bg-white rounded-lg shadow p-6">
-                  <h2 className="text-lg font-semibold mb-4">Resumo Financeiro</h2>
-                  <p className="text-gray-600 text-sm">Veja os detalhes financeiros completos na aba "Financeiro"</p>
-                </div>
+                <FinancialSummaryWidget />
               </div>
             </div>
           </div>
