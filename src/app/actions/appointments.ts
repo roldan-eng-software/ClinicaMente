@@ -35,7 +35,9 @@ export async function createManualAppointment(formData: FormData) {
 
   const sessionDuration = psychologist.session_duration_minutes || 50
   
-  const startDateTime = new Date(`${date}T${time}:00`)
+  const [year, month, day] = date.split('-').map(Number)
+  const [hours, minutes] = time.split(':').map(Number)
+  const startDateTime = new Date(year, month - 1, day, hours, minutes)
   const endDateTime = new Date(startDateTime.getTime() + sessionDuration * 60000)
 
   const { data: existingSlot } = await supabase
