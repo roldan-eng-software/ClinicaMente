@@ -65,6 +65,29 @@ export default function PatientDetailPage() {
   const [formData, setFormData] = useState<Partial<Patient>>({})
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [searchingCep, setSearchingCep] = useState(false)
+
+  async function searchCep(cep: string) {
+    if (cep.replace(/\D/g, '').length !== 8) return
+
+    setSearchingCep(true)
+    try {
+      const response = await fetch(`/api/cep?cep=${cep}`)
+      const data = await response.json()
+
+      if (!data.error && data.logradouro) {
+        const address = `${data.logradouro}${data.complemento ? ', ' + data.complemento : ''}, ${data.bairro}, ${data.cidade}-${data.estado}`
+        setFormData(prev => ({
+          ...prev,
+          address: address
+        }))
+      }
+    } catch (err) {
+      console.error('Erro ao buscar CEP:', err)
+    } finally {
+      setSearchingCep(false)
+    }
+  }
 
   useEffect(() => {
     checkPlanAndLoadData()
@@ -475,6 +498,38 @@ export default function PatientDetailPage() {
                     />
                   ) : (
                     <p className="font-medium">{patient.date_of_birth ? formatDate(patient.date_of_birth) : '-'}</p>
+                  )}
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm text-gray-500 mb-1">CEP</label>
+                  {isEditing ? (
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="00000-000"
+                        value={formData.address?.match(/\d{5}-?\d{3}/)?.[0] || ''}
+                        onChange={(e) => {
+                          const cep = e.target.value.replace(/\D/g, '')
+                          if (cep.length === 8) {
+                            searchCep(cep)
+                          }
+                        }}
+                        onBlur={(e) => {
+                          const cep = e.target.value.replace(/\D/g, '')
+                          if (cep.length === 8) {
+                            searchCep(cep)
+                          }
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      {searchingCep && (
+                        <div className="flex items-center justify-center px-3">
+                          <div className="animate-spin h-5 w-5 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="font-medium">{patient.address?.match(/\d{5}-?\d{3}/)?.[0] || '-'}</p>
                   )}
                 </div>
                 <div className="md:col-span-2">
