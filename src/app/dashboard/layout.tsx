@@ -40,7 +40,7 @@ export default async function DashboardLayout({
       <div className="min-h-screen bg-gray-50">
         <DashboardNav psychologist={psychologist} plan={plan} />
         
-        <main className="lg:pl-64 px-4 sm:px-6 lg:px-8 py-6 pt-20 lg:pt-6">
+        <main className="lg:pl-24 px-4 sm:px-6 lg:px-8 py-6 pt-20 lg:pt-6">
           {children}
         </main>
       </div>

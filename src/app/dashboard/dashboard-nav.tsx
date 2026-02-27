@@ -130,44 +130,56 @@ export function DashboardNav({ psychologist, plan }: DashboardNavProps) {
         </div>
       </div>
 
-      {/* Desktop sidebar */}
-      <div className="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:left-0 lg:w-64 lg:bg-white lg:shadow-sm lg:z-30">
-        <div className="flex items-center h-16 px-6 border-b">
+      {/* Desktop sidebar - icons only */}
+      <div className="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:left-0 lg:w-20 lg:bg-white lg:shadow-sm lg:z-30">
+        <div className="flex items-center justify-center h-16 border-b">
           <button onClick={() => handleNavigate('/dashboard')} className="text-xl font-bold text-blue-600">
-            ClínicaMente
+            CM
           </button>
         </div>
         
-        <div className="p-4">
-          <div className="flex items-center mb-6 p-2">
-            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-              <span className="text-blue-600 font-medium">
-                {psychologist.full_name?.charAt(0).toUpperCase()}
-              </span>
-            </div>
-            <div className="ml-3">
-              <div className="font-medium text-gray-900 text-sm">{psychologist.full_name}</div>
-            </div>
-          </div>
-          
-          <nav className="space-y-2">
+        <div className="flex-1 py-4">
+          <nav className="space-y-1">
             {navItems.map((item) => (
-              <NavButton key={item.href} item={item} />
+              <button
+                key={item.href}
+                onClick={() => handleNavigate(item.href)}
+                className={`w-full flex items-center justify-center p-3 transition-colors ${
+                  pathname === item.href
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+                title={item.label}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={item.icon} />
+                </svg>
+              </button>
             ))}
-            {plan === 'free' && <UpgradeButton />}
+            {plan === 'free' && (
+              <button
+                onClick={() => handleNavigate('/dashboard/upgrade')}
+                className="w-full flex items-center justify-center p-3 text-blue-600 hover:bg-blue-50"
+                title="Upgrade"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                </svg>
+              </button>
+            )}
           </nav>
+        </div>
 
-          <div className="mt-6 pt-4 border-t">
-            <button
-              onClick={() => window.open(`/p/${psychologist.slug}`, '_blank')}
-              className="w-full flex items-center px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm"
-            >
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-              </svg>
-              Ver página pública
-            </button>
-          </div>
+        <div className="p-2 border-t">
+          <button
+            onClick={() => window.open(`/p/${psychologist.slug}`, '_blank')}
+            className="w-full flex items-center justify-center p-3 text-gray-600 hover:bg-gray-100 rounded-lg"
+            title="Ver página pública"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+          </button>
         </div>
       </div>
     </>
