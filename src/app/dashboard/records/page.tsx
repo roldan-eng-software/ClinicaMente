@@ -198,16 +198,19 @@ export default function RecordsPage() {
 
     const { data: pacienteData } = await supabase
       .from('patients')
-      .select('full_name, email, phone, cpf, birthdate, address')
+      .select('full_name, email, phone, cpf, birthdate, date_of_birth, address')
       .eq('id', selectedPatientId)
       .single()
+
+    const dataNascimento = pacienteData?.date_of_birth || pacienteData?.birthdate || ''
+    const dataFormatada = dataNascimento ? (typeof dataNascimento === 'string' ? dataNascimento.split('T')[0] : '') : ''
 
     const dadosIdentificacao = {
       nome_completo: pacienteData?.full_name || '',
       email: pacienteData?.email || '',
       telefone: pacienteData?.phone || '',
       cpf: pacienteData?.cpf || '',
-      data_nascimento: pacienteData?.birthdate || '',
+      data_nascimento: dataFormatada,
       endereco: pacienteData?.address || ''
     }
 
