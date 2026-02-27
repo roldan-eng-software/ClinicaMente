@@ -196,14 +196,30 @@ export default function RecordsPage() {
       return
     }
 
-    const secoesIniciais: { prontuario_id: string; tipo_secao: string; dados_json: object }[] = [
+    const { data: pacienteData } = await supabase
+      .from('patients')
+      .select('full_name, email, phone, cpf, birthdate, address')
+      .eq('id', selectedPatientId)
+      .single()
+
+    const dadosIdentificacao = {
+      nome_completo: pacienteData?.full_name || '',
+      email: pacienteData?.email || '',
+      telefone: pacienteData?.phone || '',
+      cpf: pacienteData?.cpf || '',
+      data_nascimento: pacienteData?.birthdate || '',
+      endereco: pacienteData?.address || ''
+    }
+
+    const secoesIniciais: { prontuario_id: string; tipo_secao: string; dados_json: object; data_preenchimento?: string }[] = [
       'identificacao', 'anamnese', 'queixa_principal', 'historia_clinica',
       'historia_familiar', 'objetivos_terapeuticos', 'planejamento_tratamento',
       'evolucao', 'encerramento'
-    ].map(tipo => ({
+    ].map((tipo, index) => ({
       prontuario_id: data.id,
       tipo_secao: tipo,
-      dados_json: {}
+      dados_json: tipo === 'identificacao' ? dadosIdentificacao : {},
+      data_preenchimento: tipo === 'identificacao' ? new Date().toISOString() : undefined
     }))
 
     await supabase.from('prontuario_secoes').insert(secoesIniciais)
