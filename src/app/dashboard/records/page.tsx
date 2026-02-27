@@ -90,13 +90,13 @@ export default function RecordsPage() {
     dataSessao: '',
     horaSessao: '',
     duracaoMinutos: 50,
-    tipoSessao: 'presencial' as const,
+    tipoSessao: 'presencial' as 'presencial' | 'online' | 'telefonica',
     temaPrincipal: '',
     intervencoes: '',
     evolucao: '',
     observacoes: '',
     proximasTarefas: '',
-    presenca: 'compareceu' as const
+    presenca: 'compareceu' as 'compareceu' | 'faltou' | 'remarcado' | 'cancelado'
   })
 
   useEffect(() => {
@@ -766,7 +766,7 @@ export default function RecordsPage() {
                                     dataSessao: sessao.data_sessao,
                                     horaSessao: sessao.hora_sessao || '',
                                     duracaoMinutos: sessao.duracao_minutos,
-                                    tipoSessao: sessao.tipo_sessao,
+                                    tipoSessao: sessao.tipo_sessao as 'presencial' | 'online' | 'telefonica',
                                     temaPrincipal: sessao.tema_principal || '',
                                     intervencoes: sessao.intervencoes || '',
                                     evolucao: sessao.evolucao || '',

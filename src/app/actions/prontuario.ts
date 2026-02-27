@@ -21,7 +21,7 @@ const updateSecaoSchema = z.object({
     'evolucao',
     'encerramento'
   ]),
-  dados: z.record(z.any()),
+  dados: z.record(z.string(), z.any()),
 })
 
 const createSessaoSchema = z.object({
@@ -138,7 +138,7 @@ export async function createProntuario(psychologistId: string, data: z.infer<typ
 
   const validation = createProntuarioSchema.safeParse(data)
   if (!validation.success) {
-    return { error: validation.error.errors[0].message }
+    return { error: validation.error.issues[0].message }
   }
 
   const { pacienteId } = validation.data
@@ -213,7 +213,7 @@ export async function updateSecao(
 
   const validation = updateSecaoSchema.safeParse(data)
   if (!validation.success) {
-    return { error: validation.error.errors[0].message }
+    return { error: validation.error.issues[0].message }
   }
 
   const { prontuarioId, tipoSecao, dados } = validation.data
@@ -253,7 +253,6 @@ export async function updateSecao(
     .from('prontuarios')
     .update({
       data_atualizacao: new Date().toISOString(),
-      versao: supabase.raw('versao + 1')
     })
     .eq('id', prontuarioId)
 
@@ -270,7 +269,7 @@ export async function createSessao(
 
   const validation = createSessaoSchema.safeParse(data)
   if (!validation.success) {
-    return { error: validation.error.errors[0].message }
+    return { error: validation.error.issues[0].message }
   }
 
   const { prontuarioId, dataSessao, horaSessao, duracaoMinutos, tipoSessao, temaPrincipal, intervencoes, evolucao, observacoes, proximasTarefas, presenca } = validation.data
@@ -340,7 +339,7 @@ export async function updateSessao(
 
   const validation = updateSessaoSchema.safeParse(data)
   if (!validation.success) {
-    return { error: validation.error.errors[0].message }
+    return { error: validation.error.issues[0].message }
   }
 
   const { sessaoId, ...updateData } = validation.data
