@@ -66,17 +66,19 @@ export default function PatientDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [searchingCep, setSearchingCep] = useState(false)
+  const [cepInput, setCepInput] = useState('')
 
   async function searchCep(cep: string) {
-    if (cep.replace(/\D/g, '').length !== 8) return
+    const cleanCep = cep.replace(/\D/g, '')
+    if (cleanCep.length !== 8) return
 
     setSearchingCep(true)
     try {
-      const response = await fetch(`/api/cep?cep=${cep}`)
+      const response = await fetch(`/api/cep?cep=${cleanCep}`)
       const data = await response.json()
 
       if (!data.error && data.logradouro) {
-        const address = `${data.logradouro}${data.complemento ? ', ' + data.complemento : ''}, ${data.bairro}, ${data.cidade}-${data.estado}`
+        const address = `${data.logradouro}${data.complemento ? ', ' + data.complemento : ''}, ${data.bairro}, ${data.cidade}-${data.estado}, CEP ${data.cep}`
         setFormData(prev => ({
           ...prev,
           address: address
@@ -507,17 +509,20 @@ export default function PatientDetailPage() {
                       <input
                         type="text"
                         placeholder="00000-000"
-                        value={formData.address?.match(/\d{5}-?\d{3}/)?.[0] || ''}
-                        onChange={(e) => {
+                        value={cepInput}
+                        onChange={(e) => setCepInput(e.target.value)}
+                        onBlur={(e) => {
                           const cep = e.target.value.replace(/\D/g, '')
                           if (cep.length === 8) {
                             searchCep(cep)
                           }
                         }}
-                        onBlur={(e) => {
-                          const cep = e.target.value.replace(/\D/g, '')
-                          if (cep.length === 8) {
-                            searchCep(cep)
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            const cep = cepInput.replace(/\D/g, '')
+                            if (cep.length === 8) {
+                              searchCep(cep)
+                            }
                           }
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -527,6 +532,18 @@ export default function PatientDetailPage() {
                           <div className="animate-spin h-5 w-5 border-2 border-blue-500 border-t-transparent rounded-full"></div>
                         </div>
                       )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const cep = cepInput.replace(/\D/g, '')
+                          if (cep.length === 8) {
+                            searchCep(cep)
+                          }
+                        }}
+                        className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+                      >
+                        Buscar
+                      </button>
                     </div>
                   ) : (
                     <p className="font-medium">{patient.address?.match(/\d{5}-?\d{3}/)?.[0] || '-'}</p>
