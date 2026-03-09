@@ -1,16 +1,17 @@
 import Image from "next/image";
 import Link from "next/link";
 import CookieBanner from "@/components/CookieBanner";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function LandingPage() {
   const currentYear = new Date().getFullYear();
   const projectName = "ClínicaMente";
 
   return (
-    <div className="min-h-screen flex flex-col font-sans bg-gray-50">
+    <div className="min-h-screen flex flex-col font-sans bg-gray-50 dark:bg-gray-950">
       
       {/* 1. NAVBAR */}
-      <header className="fixed top-0 w-full bg-white/90 backdrop-blur-md shadow-sm z-50 transition-all border-b border-gray-100">
+      <header className="fixed top-0 w-full bg-white/90 dark:bg-gray-900/90 backdrop-blur-md shadow-sm z-50 transition-all border-b border-gray-100 dark:border-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
           
           {/* Esquerda: Favicon e Logotipo em PNG */}
@@ -25,12 +26,13 @@ export default function LandingPage() {
           </div>
 
           {/* Centro: Nome do Projeto */}
-          <div className="absolute left-1/2 transform -translate-x-1/2 font-bold text-xl text-gray-800 tracking-tight hidden md:block">
+          <div className="absolute left-1/2 transform -translate-x-1/2 font-bold text-xl text-gray-800 dark:text-gray-100 tracking-tight hidden md:block">
             {projectName}
           </div>
 
           {/* Direita: Botão Entrar */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <ThemeToggle />
             <Link 
               href="/login" 
               className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-medium transition-all shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
@@ -78,40 +80,40 @@ export default function LandingPage() {
       </section>
 
       {/* 2.5 STATS ROW */}
-      <section className="bg-white py-12 border-b border-gray-100">
+      <section className="bg-white dark:bg-gray-900 py-12 border-b border-gray-100 dark:border-gray-800">
         <div className="max-w-7xl mx-auto px-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             <div>
-              <div className="text-3xl md:text-4xl font-bold text-blue-600">500+</div>
-              <div className="text-gray-600 mt-1">Psicólogos ativos</div>
+              <div className="text-3xl md:text-4xl font-bold text-blue-600 dark:text-blue-400">500+</div>
+              <div className="text-gray-600 dark:text-gray-400 mt-1">Psicólogos ativos</div>
             </div>
             <div>
-              <div className="text-3xl md:text-4xl font-bold text-blue-600">50.000+</div>
-              <div className="text-gray-600 mt-1">Consultas agendadas</div>
+              <div className="text-3xl md:text-4xl font-bold text-blue-600 dark:text-blue-400">50.000+</div>
+              <div className="text-gray-600 dark:text-gray-400 mt-1">Consultas agendadas</div>
             </div>
             <div>
-              <div className="text-3xl md:text-4xl font-bold text-blue-600">98%</div>
-              <div className="text-gray-600 mt-1">Redução de faltosos</div>
+              <div className="text-3xl md:text-4xl font-bold text-blue-600 dark:text-blue-400">98%</div>
+              <div className="text-gray-600 dark:text-gray-400 mt-1">Redução de faltosos</div>
             </div>
             <div>
-              <div className="text-3xl md:text-4xl font-bold text-blue-600">4.9</div>
-              <div className="text-gray-600 mt-1">Nota média</div>
+              <div className="text-3xl md:text-4xl font-bold text-blue-600 dark:text-blue-400">4.9</div>
+              <div className="text-gray-600 dark:text-gray-400 mt-1">Nota média</div>
             </div>
           </div>
         </div>
       </section>
 
       {/* 3. PADRÃO APRESENTAÇÃO DE SERVIÇOS */}
-      <main className="flex-grow bg-gray-50 py-24">
+      <main className="flex-grow bg-gray-50 dark:bg-gray-950 py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-gray-900">Funcionalidades que simplificam sua rotina</h2>
-            <p className="mt-4 text-gray-600">Da primeira consulta ao acompanhamento financeiro, a ClínicaMente cuida dos detalhes.</p>
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Funcionalidades que simplificam sua rotina</h2>
+            <p className="mt-4 text-gray-600 dark:text-gray-400">Da primeira consulta ao acompanhamento financeiro, a ClínicaMente cuida dos detalhes.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            <div className="bg-white p-8 rounded-2xl shadow-sm hover:shadow-lg transition-all hover:-translate-y-1 border border-gray-100 group">
-              <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform text-2xl">
+            <div className="bg-white dark:bg-gray-900 p-8 rounded-2xl shadow-sm hover:shadow-lg transition-all hover:-translate-y-1 border border-gray-100 dark:border-gray-800 group">
+              <div className="w-14 h-14 bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform text-2xl">
                 📅
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-3">Agenda Inteligente</h3>
@@ -120,32 +122,32 @@ export default function LandingPage() {
               </p>
             </div>
             
-            <div className="bg-white p-8 rounded-2xl shadow-sm hover:shadow-lg transition-all hover:-translate-y-1 border border-gray-100 group">
-              <div className="w-14 h-14 bg-green-50 text-green-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform text-2xl">
+            <div className="bg-white dark:bg-gray-900 p-8 rounded-2xl shadow-sm hover:shadow-lg transition-all hover:-translate-y-1 border border-gray-100 dark:border-gray-800 group">
+              <div className="w-14 h-14 bg-green-50 dark:bg-green-950 text-green-600 dark:text-green-400 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform text-2xl">
                 🔒
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Prontuários Seguros</h3>
-              <p className="text-gray-600 leading-relaxed text-sm">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">Prontuários Seguros</h3>
+              <p className="text-gray-600 dark:text-gray-400 leading-relaxed text-sm">
                 Registros clínicos estruturados, histórico de sessões e observações importantes em um só lugar.
               </p>
             </div>
 
-            <div className="bg-white p-8 rounded-2xl shadow-sm hover:shadow-lg transition-all hover:-translate-y-1 border border-gray-100 group">
-              <div className="w-14 h-14 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform text-2xl">
+            <div className="bg-white dark:bg-gray-900 p-8 rounded-2xl shadow-sm hover:shadow-lg transition-all hover:-translate-y-1 border border-gray-100 dark:border-gray-800 group">
+              <div className="w-14 h-14 bg-purple-50 dark:bg-purple-950 text-purple-600 dark:text-purple-400 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform text-2xl">
                 💰
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Finanças Descomplicadas</h3>
-              <p className="text-gray-600 leading-relaxed text-sm">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">Finanças Descomplicadas</h3>
+              <p className="text-gray-600 dark:text-gray-400 leading-relaxed text-sm">
                  Acompanhe recebimentos, pendências e faturamento mensal sem planilhas complicadas.
               </p>
             </div>
 
-            <div className="bg-white p-8 rounded-2xl shadow-sm hover:shadow-lg transition-all hover:-translate-y-1 border border-gray-100 group">
-              <div className="w-14 h-14 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform text-2xl">
+            <div className="bg-white dark:bg-gray-900 p-8 rounded-2xl shadow-sm hover:shadow-lg transition-all hover:-translate-y-1 border border-gray-100 dark:border-gray-800 group">
+              <div className="w-14 h-14 bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform text-2xl">
                 🔔
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Lembretes Automáticos</h3>
-              <p className="text-gray-600 leading-relaxed text-sm">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">Lembretes Automáticos</h3>
+              <p className="text-gray-600 dark:text-gray-400 leading-relaxed text-sm">
                 Reduza faltas com mensagens automáticas de confirmação e lembrete para seus pacientes.
               </p>
             </div>
@@ -154,35 +156,35 @@ export default function LandingPage() {
       </main>
 
       {/* 2.6 COMO FUNCIONA / PROBLEMA-SOLUÇÃO */}
-      <section id="como-funciona" className="bg-blue-50 py-24">
+      <section id="como-funciona" className="bg-blue-50 dark:bg-blue-950/30 py-24">
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Como a ClínicaMente transforma sua rotina</h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">Em apenas 3 passos, você tem toda a gestão da sua clínica automatizada</p>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">Como a ClínicaMente transforma sua rotina</h2>
+            <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">Em apenas 3 passos, você tem toda a gestão da sua clínica automatizada</p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            <div className="bg-white rounded-2xl p-8 shadow-sm hover:shadow-md transition-all">
+            <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 shadow-sm hover:shadow-md transition-all border border-gray-100 dark:border-gray-800">
               <div className="w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center text-xl font-bold mb-6">1</div>
               <h3 className="text-xl font-bold text-gray-900 mb-3">Cadastre suas informações</h3>
               <p className="text-gray-600">Configure seus horários, valores de sessão e preferências em poucos minutos. Nossa interface intuitiva guiding você em cada etapa.</p>
             </div>
-            <div className="bg-white rounded-2xl p-8 shadow-sm hover:shadow-md transition-all">
+            <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 shadow-sm hover:shadow-md transition-all border border-gray-100 dark:border-gray-800">
               <div className="w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center text-xl font-bold mb-6">2</div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Compartilhe seu link</h3>
-              <p className="text-gray-600">Receba um link personalizado para seus pacientes agendarem sozinho, a qualquer hora. Sem intermediários, sem trocas de mensagem.</p>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">Compartilhe seu link</h3>
+              <p className="text-gray-600 dark:text-gray-400">Receba um link personalizado para seus pacientes agendarem sozinho, a qualquer hora. Sem intermediários, sem trocas de mensagem.</p>
             </div>
-            <div className="bg-white rounded-2xl p-8 shadow-sm hover:shadow-md transition-all">
+            <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 shadow-sm hover:shadow-md transition-all border border-gray-100 dark:border-gray-800">
               <div className="w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center text-xl font-bold mb-6">3</div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Tudo automatizado</h3>
-              <p className="text-gray-600">Lembretes automáticos, prontuários digitais, controle financeiro e relatórios. Você foca no atendimento, nós cuidamos do resto.</p>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">Tudo automatizado</h3>
+              <p className="text-gray-600 dark:text-gray-400">Lembretes automáticos, prontuários digitais, controle financeiro e relatórios. Você foca no atendimento, nós cuidamos do resto.</p>
             </div>
           </div>
         </div>
       </section>
 
       {/* CARROSSEL INFINITO (MARQUEE) */}
-      <section className="w-full bg-gray-100 overflow-hidden relative border-y border-gray-200">
+      <section className="w-full bg-gray-100 dark:bg-gray-900 overflow-hidden relative border-y border-gray-200 dark:border-gray-800">
         <div className="flex w-[200%] animate-marquee">
           {/* Loop de 10 imagens (5 originais + 5 duplicadas para efeito infinito) */}
           {[1, 2, 3, 4, 5, 1, 2, 3, 4, 5].map((idx, i) => (
@@ -209,56 +211,56 @@ export default function LandingPage() {
       </section>
 
       {/* TESTIMONIALS */}
-      <section className="bg-gray-50 py-24">
+      <section className="bg-gray-50 dark:bg-gray-950 py-24">
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">O que dizem nossos clientes</h2>
-            <p className="text-lg text-gray-600">Psicólogos que transformaram sua rotina com a ClínicaMente</p>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">O que dizem nossos clientes</h2>
+            <p className="text-lg text-gray-600 dark:text-gray-400">Psicólogos que transformaram sua rotina com a ClínicaMente</p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+            <div className="bg-white dark:bg-gray-900 p-8 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800">
               <div className="flex gap-1 mb-4">
                 {[1,2,3,4,5].map((s) => (
                   <span key={s} className="text-amber-400">★</span>
                 ))}
               </div>
-              <p className="text-gray-700 mb-6 italic">"A ClínicaMente transformou completamente minha gestão. Meu tempo gasto com agenda reduziu em 70% e meus pacientes adoram a facilidade de agendar."</p>
+              <p className="text-gray-700 dark:text-gray-300 mb-6 italic">"A ClínicaMente transformou completamente minha gestão. Meu tempo gasto com agenda reduziu em 70% e meus pacientes adoram a facilidade de agendar."</p>
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold">DR</div>
+                <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold">DR</div>
                 <div>
-                  <div className="font-semibold text-gray-900">Dra. Roberta Lima</div>
-                  <div className="text-sm text-gray-500">CRP 06/123456</div>
+                  <div className="font-semibold text-gray-900 dark:text-white">Dra. Roberta Lima</div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400">CRP 06/123456</div>
                 </div>
               </div>
             </div>
-            <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+            <div className="bg-white dark:bg-gray-900 p-8 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800">
               <div className="flex gap-1 mb-4">
                 {[1,2,3,4,5].map((s) => (
                   <span key={s} className="text-amber-400">★</span>
                 ))}
               </div>
-              <p className="text-gray-700 mb-6 italic">"Finalmente consigo focar no atendimento. Os lembretes automáticos reduziram minhas faltas de 30% para quase zero. Investimento que vale cada centavo."</p>
+              <p className="text-gray-700 dark:text-gray-300 mb-6 italic">"Finalmente consigo focar no atendimento. Os lembretes automáticos reduziram minhas faltas de 30% para quase zero. Investimento que vale cada centavo."</p>
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center text-green-600 font-bold">MJ</div>
+                <div className="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center text-green-600 dark:text-green-400 font-bold">MJ</div>
                 <div>
-                  <div className="font-semibold text-gray-900">Dr. Marcos Júnior</div>
-                  <div className="text-sm text-gray-500">CRP 07/987654</div>
+                  <div className="font-semibold text-gray-900 dark:text-white">Dr. Marcos Júnior</div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400">CRP 07/987654</div>
                 </div>
               </div>
             </div>
-            <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+            <div className="bg-white dark:bg-gray-900 p-8 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800">
               <div className="flex gap-1 mb-4">
                 {[1,2,3,4,5].map((s) => (
                   <span key={s} className="text-amber-400">★</span>
                 ))}
               </div>
-              <p className="text-gray-700 mb-6 italic">"Prontuários seguros e fácil acesso. Posso atender online e presencial com a mesma qualidade. Super recomendo para quem está começando."</p>
+              <p className="text-gray-700 dark:text-gray-300 mb-6 italic">"Prontuários seguros e fácil acesso. Posso atender online e presencial com a mesma qualidade. Super recomendo para quem está começando."</p>
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center text-purple-600 font-bold">AS</div>
+                <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center text-purple-600 dark:text-purple-400 font-bold">AS</div>
                 <div>
-                  <div className="font-semibold text-gray-900">Dra. Ana Silva</div>
-                  <div className="text-sm text-gray-500">CRP 05/456789</div>
+                  <div className="font-semibold text-gray-900 dark:text-white">Dra. Ana Silva</div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400">CRP 05/456789</div>
                 </div>
               </div>
             </div>
@@ -267,39 +269,39 @@ export default function LandingPage() {
       </section>
 
       {/* FAQ */}
-      <section className="bg-white py-24">
+      <section className="bg-white dark:bg-gray-900 py-24">
         <div className="max-w-3xl mx-auto px-4">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Perguntas Frequentes</h2>
-            <p className="text-lg text-gray-600">Tire suas dúvidas sobre a ClínicaMente</p>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">Perguntas Frequentes</h2>
+            <p className="text-lg text-gray-600 dark:text-gray-400">Tire suas dúvidas sobre a ClínicaMente</p>
           </div>
 
           <div className="space-y-4">
-            <div className="border border-gray-200 rounded-xl p-6">
-              <h3 className="font-semibold text-gray-900 mb-2">É seguro armazenar prontuários na nuvem?</h3>
-              <p className="text-gray-600">Sim! Utilizamos criptografia de ponta e estamos em conformidade com a LGPD. Seus dados e de seus pacientes estão completamente protegidos.</p>
+            <div className="border border-gray-200 dark:border-gray-700 rounded-xl p-6">
+              <h3 className="font-semibold text-gray-900 dark:text-white mb-2">É seguro armazenar prontuários na nuvem?</h3>
+              <p className="text-gray-600 dark:text-gray-400">Sim! Utilizamos criptografia de ponta e estamos em conformidade com a LGPD. Seus dados e de seus pacientes estão completamente protegidos.</p>
             </div>
-            <div className="border border-gray-200 rounded-xl p-6">
-              <h3 className="font-semibold text-gray-900 mb-2">Posso testar antes de pagar?</h3>
-              <p className="text-gray-600">Oferecemos 14 dias de teste gratuito, sem necessidade de cartão de crédito. Você pode experimentar todas as funcionalidades antes de decidir.</p>
+            <div className="border border-gray-200 dark:border-gray-700 rounded-xl p-6">
+              <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Posso testar antes de pagar?</h3>
+              <p className="text-gray-600 dark:text-gray-400">Oferecemos 14 dias de teste gratuito, sem necessidade de cartão de crédito. Você pode experimentar todas as funcionalidades antes de decidir.</p>
             </div>
-            <div className="border border-gray-200 rounded-xl p-6">
-              <h3 className="font-semibold text-gray-900 mb-2">Quais formas de pagamento aceita?</h3>
-              <p className="text-gray-600">Aceitamos cartão de crédito (parcelamento em até 12x), PIX e boleto bancário. Você pode cancelar a qualquer momento.</p>
+            <div className="border border-gray-200 dark:border-gray-700 rounded-xl p-6">
+              <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Quais formas de pagamento aceita?</h3>
+              <p className="text-gray-600 dark:text-gray-400">Aceitamos cartão de crédito (parcelamento em até 12x), PIX e boleto bancário. Você pode cancelar a qualquer momento.</p>
             </div>
-            <div className="border border-gray-200 rounded-xl p-6">
-              <h3 className="font-semibold text-gray-900 mb-2">Preciso de conhecimento técnico para usar?</h3>
-              <p className="text-gray-600">Não! A plataforma foi desenhada para ser intuitiva. Em poucos minutos você configura tudo. Oferecemos suporte gratuito por chat e email.</p>
+            <div className="border border-gray-200 dark:border-gray-700 rounded-xl p-6">
+              <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Preciso de conhecimento técnico para usar?</h3>
+              <p className="text-gray-600 dark:text-gray-400">Não! A plataforma foi desenhada para ser intuitiva. Em poucos minutos você configura tudo. Oferecemos suporte gratuito por chat e email.</p>
             </div>
           </div>
         </div>
       </section>
 
       {/* Pricing / Planos (Call To Action pre-footer) */}
-      <section className="bg-white py-24">
+      <section className="bg-white dark:bg-gray-900 py-24">
          <div className="max-w-4xl mx-auto px-4 text-center">
-             <h2 className="text-3xl font-bold text-gray-900 mb-6">Pronto para dar o próximo passo na gestão da sua clínica?</h2>
-             <p className="text-lg text-gray-600 mb-8">
+             <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">Pronto para dar o próximo passo na gestão da sua clínica?</h2>
+             <p className="text-lg text-gray-600 dark:text-gray-400 mb-8">
                 Crie sua conta em poucos minutos e experimente uma rotina mais leve, com tecnologia pensada para o seu consultório.
              </p>
              <Link href="/pricing" className="inline-block bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-xl font-bold text-lg transition-all hover:scale-105 shadow-xl">
