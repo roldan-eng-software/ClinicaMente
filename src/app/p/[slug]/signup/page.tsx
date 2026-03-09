@@ -74,7 +74,7 @@ function PatientSignupForm() {
         })
 
       if (patientError) {
-        setError(patientError.message)
+        setError((patientError as any).message)
         setSaving(false)
         return
       }

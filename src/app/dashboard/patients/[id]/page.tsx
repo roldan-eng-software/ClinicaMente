@@ -106,20 +106,22 @@ export default function PatientDetailPage() {
 
     setIsPro(planData?.plan_type === 'pro')
 
-    const { data: patientData } = await supabase
+    const { data: patientData } = (await supabase
       .from('patients')
       .select('*')
       .eq('id', params.id)
       .eq('psychologist_id', psychologist.id)
-      .single()
+      .single()) as { data: Patient | null }
 
     if (!patientData) {
       router.push('/dashboard/patients')
       return
     }
 
-    setPatient(patientData)
-    setFormData(patientData)
+    if (patientData) {
+      setPatient(patientData)
+      setFormData(patientData)
+    }
 
     const { data: appointmentsData } = await supabase
       .from('appointments')
@@ -135,7 +137,7 @@ export default function PatientDetailPage() {
       .order('scheduled_at', { ascending: false })
 
     if (appointmentsData) {
-      setAppointments(appointmentsData.map((a: any) => ({
+      setAppointments((appointmentsData as any[]).map((a: any) => ({
         ...a,
         slot: a.slot?.[0]
       })))
@@ -149,7 +151,7 @@ export default function PatientDetailPage() {
       .order('paid_at', { ascending: false })
 
     if (paymentsData) {
-      setPayments(paymentsData)
+      setPayments(paymentsData as Payment[])
     }
 
     const { data: notesData } = await supabase
@@ -160,7 +162,7 @@ export default function PatientDetailPage() {
       .order('created_at', { ascending: false })
 
     if (notesData) {
-      setNotes(notesData)
+      setNotes(notesData as SessionNote[])
     }
 
     setLoading(false)

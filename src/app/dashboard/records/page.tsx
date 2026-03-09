@@ -189,7 +189,7 @@ export default function RecordsPage() {
       .select()
       .single()
 
-    if (error) {
+    if (error || !data) {
       console.error('Erro ao criar prontuário:', error)
       alert('Erro ao criar prontuário')
       setSaving(false)
@@ -247,7 +247,7 @@ export default function RecordsPage() {
         setSelectedProntuario({
           ...fullProntuario,
           paciente: fullProntuario.paciente?.[0] || fullProntuario.paciente
-        })
+        } as any)
         await loadProntuarioDetails(data.id)
         setActiveTab('dados')
       }

@@ -76,7 +76,7 @@ export default function PatientsPage() {
 
     const maxPatients = limitData?.max_patients || 10
     
-    if (count !== null && count >= maxPatients) {
+    if (count !== null && count !== undefined && count >= maxPatients) {
       setShowLimitModal(true)
       return
     }

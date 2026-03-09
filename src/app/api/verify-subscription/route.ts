@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+export const dynamic = 'force-dynamic'
 import { stripe, retrieveCheckoutSession } from '@/lib/stripe'
 import { prisma } from '@/lib/prisma'
 

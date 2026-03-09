@@ -80,7 +80,7 @@ export default function PatientPrivacyPage() {
       return
     }
 
-    setPatientData(patient)
+    setPatientData(patient as any)
 
     const [appointmentsData, paymentsData, consentData] = await Promise.all([
       supabase

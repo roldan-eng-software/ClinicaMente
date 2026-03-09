@@ -164,7 +164,7 @@ export default function SettingsPage() {
     setCollaborators(collaboratorsData.data || [])
     
     if (settingsData.data) {
-      setClinicSettings(settingsData.data)
+      setClinicSettings(settingsData.data as any)
       setAdvancedForm({
         appointmentTypes: settingsData.data.appointment_types || ['presencial', 'online'],
         defaultAppointmentType: settingsData.data.default_appointment_type || 'presencial',

@@ -181,7 +181,7 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
       return
     }
 
-    setPsychologist(data)
+    setPsychologist(data as any)
   }
 
   async function loadCollaborators() {
