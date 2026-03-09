@@ -181,23 +181,15 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* 4. CARROSSEL DE IMAGENS (LARGURA TOTAL) */}
-      <section className="w-full bg-gray-100 overflow-hidden relative">
-        <div className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-          
-          {/* Loop de 5 imagens representativas. Requer criar as imagens na pasta public do projeto.  */}
-          {[1, 2, 3, 4, 5].map((idx) => (
+      {/* CARROSSEL INFINITO (MARQUEE) */}
+      <section className="w-full bg-gray-100 overflow-hidden relative border-y border-gray-200">
+        <div className="flex w-[200%] animate-marquee">
+          {/* Loop de 10 imagens (5 originais + 5 duplicadas para efeito infinito) */}
+          {[1, 2, 3, 4, 5, 1, 2, 3, 4, 5].map((idx, i) => (
             <div 
-              key={idx} 
-              className="w-full md:w-1/2 lg:w-1/3 flex-none snap-center relative h-[400px] sm:h-[450px] bg-slate-300 border-r border-white"
+              key={`${idx}-${i}`} 
+              className="w-full md:w-1/2 lg:w-1/3 flex-none relative h-[400px] sm:h-[450px] bg-slate-300 border-r border-white"
             >
-              {/* <Image 
-                src={`/carousel-${idx}.jpg`} 
-                alt={`Imagem Destaque ${idx}`} 
-                fill 
-                className="object-cover"
-              /> */}
-              {/* placeholder visivel enquanto as imagens nao existem */}
               <div className="absolute inset-0 flex items-center justify-center text-slate-500 font-bold opacity-50 text-2xl">
                  Foto do Sistema {idx}
               </div>
