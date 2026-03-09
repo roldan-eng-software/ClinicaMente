@@ -1,8 +1,10 @@
 'use client'
 
 import { useState, Suspense } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { signIn } from 'next-auth/react'
+import Link from 'next/link'
+import { ArrowLeft, Loader2 } from 'lucide-react'
 
 function LoginForm() {
   const [email, setEmail] = useState('')
@@ -12,36 +14,21 @@ function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const message = searchParams.get('message')
-  const supabase = createClient()
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
 
-    const { data: sessionData, error: loginError } = await supabase.auth.signInWithPassword({
+    const result = await signIn('credentials', {
+      redirect: false,
       email,
       password,
     })
 
-    if (loginError) {
-      setError(loginError.message)
+    if (result?.error) {
+      setError('E-mail ou senha inválidos. Tente novamente.')
       setLoading(false)
-      return
-    }
-
-    if (sessionData?.user) {
-      const { data: psychologist } = await supabase
-        .from('psychologists')
-        .select('onboarding_completed')
-        .eq('user_id', sessionData.user.id)
-        .single()
-
-      if (psychologist?.onboarding_completed === false) {
-        router.push('/onboarding')
-      } else {
-        router.push('/dashboard')
-      }
     } else {
       router.push('/dashboard')
     }
@@ -50,19 +37,19 @@ function LoginForm() {
   return (
     <>
       {message === 'check_email' && (
-        <div className="mb-4 p-3 bg-green-50 text-green-600 rounded-md text-sm">
-          Conta criada! Verifique seu e-mail para confirmar o cadastro.
+        <div className="mb-6 p-4 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-sm text-center">
+          Conta criada! Em um sistema real, você verificaria seu e-mail. Faça login agora.
         </div>
       )}
 
       {error && (
-        <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-md text-sm">
+        <div className="mb-6 p-4 bg-red-50 text-red-600 border border-red-200 rounded-lg text-sm text-center">
           {error}
         </div>
       )}
 
-      <form onSubmit={handleLogin} className="space-y-4">
-        <div>
+      <form onSubmit={handleLogin} className="space-y-6">
+        <div className="space-y-1">
           <label htmlFor="email" className="block text-sm font-medium text-gray-700">
             E-mail
           </label>
@@ -72,52 +59,91 @@ function LoginForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+            placeholder="seu@email.com"
           />
         </div>
 
-        <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-            Senha
-          </label>
+        <div className="space-y-1">
+          <div className="flex items-center justify-between">
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              Senha
+            </label>
+            <Link href="/esqueci-a-senha" className="text-sm font-medium text-blue-600 hover:text-blue-500 transition-colors">
+              Esqueci a senha
+            </Link>
+          </div>
           <input
             id="password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+            placeholder="••••••••"
           />
         </div>
 
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+          className="w-full flex items-center justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-70 disabled:cursor-not-allowed transition-all duration-200"
         >
-          {loading ? 'Entrando...' : 'Entrar'}
+          {loading ? (
+            <>
+              <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+              Entrando...
+            </>
+          ) : (
+            'Entrar'
+          )}
         </button>
       </form>
 
-      <p className="mt-4 text-center text-sm text-gray-600">
-        Não tem uma conta?{' '}
-        <a href="/signup" className="text-blue-600 hover:text-blue-700">
-          Cadastrar
-        </a>
-      </p>
+      <div className="mt-8 text-center">
+        <p className="text-sm text-gray-600">
+          Não tem uma conta?{' '}
+          <Link href="/signup" className="font-semibold text-blue-600 hover:text-blue-500 transition-colors">
+            Criar nova conta
+          </Link>
+        </p>
+      </div>
     </>
   )
 }
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full p-8 bg-white rounded-lg shadow-md">
-        <h1 className="text-2xl font-bold text-center mb-6">ClínicaMente</h1>
-        <h2 className="text-xl text-center mb-6">Entrar</h2>
-        <Suspense fallback={<div className="text-center">Carregando...</div>}>
-          <LoginForm />
-        </Suspense>
+    <div className="min-h-screen flex text-gray-900 bg-gray-50 flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden">
+      
+      {/* Background Decorative Elements */}
+      <div className="absolute top-0 left-1/2 -ml-[40rem] w-[80rem] h-[40rem] bg-gradient-to-b from-blue-100 to-transparent opacity-50 blur-3xl rounded-full mix-blend-multiply pointer-events-none" />
+      <div className="absolute bottom-0 right-1/2 -mr-[40rem] w-[80rem] h-[40rem] bg-gradient-to-t from-sky-100 to-transparent opacity-50 blur-3xl rounded-full mix-blend-multiply pointer-events-none" />
+
+      <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10 px-4 sm:px-0">
+        <Link href="/" className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-gray-900 mb-6 transition-colors">
+          <ArrowLeft className="w-4 h-4 mr-1" />
+          Voltar para Home
+        </Link>
+        
+        <h2 className="text-center text-3xl font-extrabold tracking-tight">
+          Entrar na ClínicaMente
+        </h2>
+        <p className="mt-2 text-center text-sm text-gray-600">
+          Acesse seu painel para gerenciar sua clínica.
+        </p>
+      </div>
+
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10">
+        <div className="bg-white/80 backdrop-blur-xl py-8 px-4 shadow-xl shadow-gray-200/50 sm:rounded-2xl sm:px-10 border border-white/20">
+          <Suspense fallback={
+            <div className="flex justify-center items-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            </div>
+          }>
+            <LoginForm />
+          </Suspense>
+        </div>
       </div>
     </div>
   )

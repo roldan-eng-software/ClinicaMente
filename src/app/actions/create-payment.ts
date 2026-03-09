@@ -1,52 +1,37 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { auth } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
 import { createCheckoutSession } from '@/lib/stripe'
 import { redirect } from 'next/navigation'
 
 export async function createPaymentSession(appointmentId: string) {
-  const supabase = await createClient()
+  const session = await auth()
+  if (!session?.user?.id) return { error: 'Usuário não autenticado' }
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const appointment = await prisma.appointment.findUnique({
+    where: { id: appointmentId },
+    include: {
+      psychologist: { select: { id: true, fullName: true, slug: true } },
+      patient: { select: { email: true } },
+    },
+  })
 
-  if (!user) {
-    return { error: 'Usuário não autenticado' }
-  }
+  if (!appointment) return { error: 'Agendamento não encontrado' }
 
-  const { data: appointment } = await supabase
-    .from('appointments')
-    .select(`
-      id,
-      scheduled_at,
-      psychologist:psychologists(id, full_name, default_session_price),
-      patient:patients(email)
-    `)
-    .eq('id', appointmentId)
-    .single()
-
-  if (!appointment) {
-    return { error: 'Agendamento não encontrado' }
-  }
-
-  const psychologist = appointment.psychologist as any
-  const patient = appointment.patient as any
-  
-  const amount = psychologist.default_session_price || 15000
-
+  const amount = 15000 // default session price in cents
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
 
-  const session = await createCheckoutSession({
+  const checkoutSession = await createCheckoutSession({
     appointmentId: appointment.id,
-    psychologistName: psychologist.full_name,
-    patientEmail: patient.email,
+    psychologistName: appointment.psychologist.fullName,
+    patientEmail: appointment.patient?.email || '',
     amount,
     successUrl: `${baseUrl}/p/success?session_id={CHECKOUT_SESSION_ID}`,
     cancelUrl: `${baseUrl}/p/cancel`,
   })
 
-  if (!session.url) {
-    return { error: 'Erro ao criar sessão de pagamento' }
-  }
+  if (!checkoutSession.url) return { error: 'Erro ao criar sessão de pagamento' }
 
-  redirect(session.url)
+  redirect(checkoutSession.url)
 }

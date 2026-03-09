@@ -1,6 +1,7 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { auth } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 
 const exportDataSchema = z.object({
@@ -8,85 +9,68 @@ const exportDataSchema = z.object({
 })
 
 export async function exportPatientData(formData: FormData) {
-  const supabase = await createClient()
+  const session = await auth()
+  if (!session?.user?.id) return { error: 'Usuário não autenticado' }
 
-  const { data: { user } } = await supabase.auth.getUser()
+  // Find patient by user (patient-facing export)
+  const patient = await prisma.patient.findFirst({
+    where: { email: session.user.email || '' },
+  })
 
-  if (!user) {
-    return { error: 'Usuário não autenticado' }
-  }
-
-  const { data: patient } = await supabase
-    .from('patients')
-    .select('*')
-    .eq('user_id', user.id)
-    .single()
-
-  if (!patient) {
-    return { error: 'Paciente não encontrado' }
-  }
+  if (!patient) return { error: 'Paciente não encontrado' }
 
   const [appointments, payments, consentLogs] = await Promise.all([
-    supabase
-      .from('appointments')
-      .select(`
-        id,
-        scheduled_at,
-        status,
-        psychologists:psychologists(id, full_name, crp)
-      `)
-      .eq('patient_id', patient.id)
-      .order('scheduled_at', { ascending: false }),
-    supabase
-      .from('payments')
-      .select('*')
-      .eq('patient_id', patient.id)
-      .order('paid_at', { ascending: false }),
-    supabase
-      .from('consent_logs')
-      .select('*')
-      .eq('patient_id', patient.id)
-      .order('created_at', { ascending: false })
+    prisma.appointment.findMany({
+      where: { patientId: patient.id },
+      include: { psychologist: { select: { id: true, fullName: true, crp: true } } },
+      orderBy: { dateTime: 'desc' },
+    }),
+    prisma.payment.findMany({
+      where: { patientId: patient.id },
+      orderBy: { paidAt: 'desc' },
+    }),
+    prisma.consentLog.findMany({
+      where: { patientId: patient.id },
+      orderBy: { createdAt: 'desc' },
+    }),
   ])
 
   const exportData = {
     exported_at: new Date().toISOString(),
     patient: {
       id: patient.id,
-      name: patient.name,
+      name: patient.fullName,
       email: patient.email,
       phone: patient.phone,
       cpf: patient.cpf,
-      date_of_birth: patient.date_of_birth,
-      address: patient.address,
-      created_at: patient.created_at,
+      date_of_birth: patient.birthDate,
+      created_at: patient.createdAt,
     },
-    appointments: appointments.data?.map(apt => ({
+    appointments: appointments.map(apt => ({
       id: apt.id,
-      scheduled_at: apt.scheduled_at,
+      scheduled_at: apt.dateTime,
       status: apt.status,
-      psychologist_name: apt.psychologists?.[0]?.full_name,
-      psychologist_crp: apt.psychologists?.[0]?.crp,
-    })) || [],
-    payments: payments.data?.map(pay => ({
+      psychologist_name: apt.psychologist.fullName,
+      psychologist_crp: apt.psychologist.crp,
+    })),
+    payments: payments.map(pay => ({
       id: pay.id,
       amount: pay.amount,
       currency: 'BRL',
       status: pay.status,
-      payment_method: pay.payment_method,
-      paid_at: pay.paid_at,
-    })) || [],
-    consent_logs: consentLogs.data?.map(log => ({
+      payment_method: pay.method,
+      paid_at: pay.paidAt,
+    })),
+    consent_logs: consentLogs.map(log => ({
       id: log.id,
-      consent_type: log.consent_type,
-      consent_version: log.consent_version,
+      consent_type: log.consentType,
       granted: log.granted,
-      ip_address: log.ip_address,
-      created_at: log.created_at,
-    })) || [],
+      ip_address: log.ipAddress,
+      created_at: log.createdAt,
+    })),
     clinical_notes: {
       available: false,
-      message: 'Os prontuários clínicos estão sob custódia do psicólogo responsável. Para solicitar acesso, entre em contato direto com o profissional.'
+      message: 'Os prontuários clínicos estão sob custódia do psicólogo responsável. Para solicitar acesso, entre em contato direto com o profissional.',
     },
     lgpd_notice: {
       law: 'Lei Geral de Proteção de Dados (LGPD) - Lei nº 13.709/2018',
@@ -94,15 +78,12 @@ export async function exportPatientData(formData: FormData) {
         'Acesso aos dados pessoais',
         'Portabilidade dos dados',
         'Anonimização ou exclusão de dados',
-        'Revogação de consentimento'
+        'Revogação de consentimento',
       ],
       data_controller: 'ClínicaMente - CNPJ: A ser informado',
-      contact: 'privacidade@clinicamente.app'
-    }
+      contact: 'privacidade@clinicamente.app',
+    },
   }
 
-  return { 
-    success: true, 
-    data: exportData 
-  }
+  return { success: true, data: exportData }
 }

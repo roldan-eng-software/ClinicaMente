@@ -1,25 +1,12 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedPsychologist } from '@/lib/auth-helpers'
+import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 
 export async function saveClinicSettings(formData: FormData) {
-  const supabase = await createClient()
-  
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return { error: 'Usuário não autenticado' }
-  }
-
-  const { data: psychologist } = await supabase
-    .from('psychologists')
-    .select('id')
-    .eq('user_id', user.id)
-    .single()
-
-  if (!psychologist) {
-    return { error: 'Psicólogo não encontrado' }
-  }
+  const { error, psychologist } = await getAuthenticatedPsychologist()
+  if (error || !psychologist) return { error: error || 'Psicólogo não encontrado' }
 
   const clinicName = formData.get('clinicName') as string
   const clinicAddress = formData.get('clinicAddress') as string
@@ -31,23 +18,23 @@ export async function saveClinicSettings(formData: FormData) {
   const eventTypes = formData.getAll('eventTypes') as string[]
   const eventOrder = formData.getAll('eventOrder') as string[]
 
-  const { error } = await supabase
-    .from('psychologists')
-    .update({
-      clinic_name: clinicName || null,
-      clinic_address: clinicAddress || null,
-      clinic_phone: clinicPhone || null,
-      clinic_email: clinicEmail || null,
-      primary_color: primaryColor || '#3B82F6',
-      secondary_color: secondaryColor || '#10B981',
-      session_duration_minutes: sessionDuration ? parseInt(sessionDuration) : 50,
-      event_types_to_show: eventTypes.length > 0 ? eventTypes : ['appointment', 'blocked_time'],
-      event_card_order: eventOrder.length > 0 ? eventOrder : ['time', 'patient', 'type'],
+  try {
+    await prisma.psychologist.update({
+      where: { id: psychologist.id },
+      data: {
+        clinicName: clinicName || null,
+        clinicAddress: clinicAddress || null,
+        clinicPhone: clinicPhone || null,
+        clinicEmail: clinicEmail || null,
+        primaryColor: primaryColor || '#3B82F6',
+        secondaryColor: secondaryColor || '#10B981',
+        sessionDurationMinutes: sessionDuration ? parseInt(sessionDuration) : 50,
+        eventTypesToShow: eventTypes.length > 0 ? eventTypes : ['appointment', 'blocked_time'],
+        eventCardOrder: eventOrder.length > 0 ? eventOrder : ['time', 'patient', 'type'],
+      },
     })
-    .eq('id', psychologist.id)
-
-  if (error) {
-    console.error('Error saving clinic settings:', error)
+  } catch (e) {
+    console.error('Error saving clinic settings:', e)
     return { error: 'Erro ao salvar configurações da clínica' }
   }
 
@@ -56,22 +43,8 @@ export async function saveClinicSettings(formData: FormData) {
 }
 
 export async function saveCollaborator(formData: FormData) {
-  const supabase = await createClient()
-  
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return { error: 'Usuário não autenticado' }
-  }
-
-  const { data: psychologist } = await supabase
-    .from('psychologists')
-    .select('id')
-    .eq('user_id', user.id)
-    .single()
-
-  if (!psychologist) {
-    return { error: 'Psicólogo não encontrado' }
-  }
+  const { error, psychologist } = await getAuthenticatedPsychologist()
+  if (error || !psychologist) return { error: error || 'Psicólogo não encontrado' }
 
   const fullName = formData.get('fullName') as string
   const email = formData.get('email') as string
@@ -85,43 +58,20 @@ export async function saveCollaborator(formData: FormData) {
     return { error: 'Nome e email são obrigatórios' }
   }
 
-  let error
-
-  if (collaboratorId) {
-    const { error: updateError } = await supabase
-      .from('collaborators')
-      .update({
-        full_name: fullName,
-        email: email,
-        phone: phone || null,
-        crp: crp || null,
-        specialty: specialty || null,
-        bio: bio || null,
-        updated_at: new Date().toISOString(),
+  try {
+    if (collaboratorId) {
+      await prisma.collaborator.update({
+        where: { id: collaboratorId, psychologistId: psychologist.id },
+        data: { fullName, email, phone: phone || null, crp: crp || null, specialty: specialty || null, bio: bio || null },
       })
-      .eq('id', collaboratorId)
-      .eq('psychologist_id', psychologist.id)
-    
-    error = updateError
-  } else {
-    const { error: insertError } = await supabase
-      .from('collaborators')
-      .insert({
-        psychologist_id: psychologist.id,
-        full_name: fullName,
-        email: email,
-        phone: phone || null,
-        crp: crp || null,
-        specialty: specialty || null,
-        bio: bio || null,
+    } else {
+      await prisma.collaborator.create({
+        data: { psychologistId: psychologist.id, fullName, email, phone: phone || null, crp: crp || null, specialty: specialty || null, bio: bio || null },
       })
-    
-    error = insertError
-  }
-
-  if (error) {
-    console.error('Error saving collaborator:', error)
-    if (error.code === '23505') {
+    }
+  } catch (e: any) {
+    console.error('Error saving collaborator:', e)
+    if (e?.code === 'P2002') {
       return { error: 'Já existe um colaborador com este email' }
     }
     return { error: 'Erro ao salvar colaborador' }
@@ -132,31 +82,15 @@ export async function saveCollaborator(formData: FormData) {
 }
 
 export async function deleteCollaborator(collaboratorId: string) {
-  const supabase = await createClient()
-  
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return { error: 'Usuário não autenticado' }
-  }
+  const { error, psychologist } = await getAuthenticatedPsychologist()
+  if (error || !psychologist) return { error: error || 'Psicólogo não encontrado' }
 
-  const { data: psychologist } = await supabase
-    .from('psychologists')
-    .select('id')
-    .eq('user_id', user.id)
-    .single()
-
-  if (!psychologist) {
-    return { error: 'Psicólogo não encontrado' }
-  }
-
-  const { error } = await supabase
-    .from('collaborators')
-    .delete()
-    .eq('id', collaboratorId)
-    .eq('psychologist_id', psychologist.id)
-
-  if (error) {
-    console.error('Error deleting collaborator:', error)
+  try {
+    await prisma.collaborator.delete({
+      where: { id: collaboratorId, psychologistId: psychologist.id },
+    })
+  } catch (e) {
+    console.error('Error deleting collaborator:', e)
     return { error: 'Erro ao excluir colaborador' }
   }
 
@@ -165,61 +99,29 @@ export async function deleteCollaborator(collaboratorId: string) {
 }
 
 export async function saveRoom(formData: FormData) {
-  const supabase = await createClient()
-  
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return { error: 'Usuário não autenticado' }
-  }
-
-  const { data: psychologist } = await supabase
-    .from('psychologists')
-    .select('id')
-    .eq('user_id', user.id)
-    .single()
-
-  if (!psychologist) {
-    return { error: 'Psicólogo não encontrado' }
-  }
+  const { error, psychologist } = await getAuthenticatedPsychologist()
+  if (error || !psychologist) return { error: error || 'Psicólogo não encontrado' }
 
   const name = formData.get('name') as string
   const color = formData.get('color') as string
   const appointmentType = formData.get('appointmentType') as string
   const roomId = formData.get('roomId') as string
 
-  if (!name) {
-    return { error: 'Nome da sala é obrigatório' }
-  }
+  if (!name) return { error: 'Nome da sala é obrigatório' }
 
-  let error
-
-  if (roomId) {
-    const { error: updateError } = await supabase
-      .from('rooms')
-      .update({
-        name: name,
-        color: color || '#3B82F6',
-        appointment_type: appointmentType || 'presencial',
+  try {
+    if (roomId) {
+      await prisma.room.update({
+        where: { id: roomId, psychologistId: psychologist.id },
+        data: { name, color: color || '#3B82F6', appointmentType: appointmentType || 'presencial' },
       })
-      .eq('id', roomId)
-      .eq('psychologist_id', psychologist.id)
-    
-    error = updateError
-  } else {
-    const { error: insertError } = await supabase
-      .from('rooms')
-      .insert({
-        psychologist_id: psychologist.id,
-        name: name,
-        color: color || '#3B82F6',
-        appointment_type: appointmentType || 'presencial',
+    } else {
+      await prisma.room.create({
+        data: { psychologistId: psychologist.id, name, color: color || '#3B82F6', appointmentType: appointmentType || 'presencial' },
       })
-    
-    error = insertError
-  }
-
-  if (error) {
-    console.error('Error saving room:', error)
+    }
+  } catch (e) {
+    console.error('Error saving room:', e)
     return { error: 'Erro ao salvar sala' }
   }
 
@@ -228,31 +130,15 @@ export async function saveRoom(formData: FormData) {
 }
 
 export async function deleteRoom(roomId: string) {
-  const supabase = await createClient()
-  
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return { error: 'Usuário não autenticado' }
-  }
+  const { error, psychologist } = await getAuthenticatedPsychologist()
+  if (error || !psychologist) return { error: error || 'Psicólogo não encontrado' }
 
-  const { data: psychologist } = await supabase
-    .from('psychologists')
-    .select('id')
-    .eq('user_id', user.id)
-    .single()
-
-  if (!psychologist) {
-    return { error: 'Psicólogo não encontrado' }
-  }
-
-  const { error } = await supabase
-    .from('rooms')
-    .delete()
-    .eq('id', roomId)
-    .eq('psychologist_id', psychologist.id)
-
-  if (error) {
-    console.error('Error deleting room:', error)
+  try {
+    await prisma.room.delete({
+      where: { id: roomId, psychologistId: psychologist.id },
+    })
+  } catch (e) {
+    console.error('Error deleting room:', e)
     return { error: 'Erro ao excluir sala' }
   }
 
@@ -261,22 +147,8 @@ export async function deleteRoom(roomId: string) {
 }
 
 export async function saveClinicSettingsAdvanced(formData: FormData) {
-  const supabase = await createClient()
-  
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return { error: 'Usuário não autenticado' }
-  }
-
-  const { data: psychologist } = await supabase
-    .from('psychologists')
-    .select('id')
-    .eq('user_id', user.id)
-    .single()
-
-  if (!psychologist) {
-    return { error: 'Psicólogo não encontrado' }
-  }
+  const { error, psychologist } = await getAuthenticatedPsychologist()
+  if (error || !psychologist) return { error: error || 'Psicólogo não encontrado' }
 
   const appointmentTypes = formData.getAll('appointmentTypes') as string[]
   const defaultAppointmentType = formData.get('defaultAppointmentType') as string
@@ -287,23 +159,33 @@ export async function saveClinicSettingsAdvanced(formData: FormData) {
   const sendEmailReminder = formData.get('sendEmailReminder') === 'true'
   const reminderHoursBefore = parseInt(formData.get('reminderHoursBefore') as string) || 24
 
-  const { error } = await supabase
-    .from('clinic_settings')
-    .upsert({
-      psychologist_id: psychologist.id,
-      appointment_types: appointmentTypes.length > 0 ? appointmentTypes : ['presencial', 'online'],
-      default_appointment_type: defaultAppointmentType || 'presencial',
-      show_patient_phone: showPatientPhone,
-      show_patient_email: showPatientEmail,
-      require_patient_phone: requirePatientPhone,
-      require_patient_email: requirePatientEmail,
-      send_email_reminder: sendEmailReminder,
-      reminder_hours_before: reminderHoursBefore,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'psychologist_id' })
-
-  if (error) {
-    console.error('Error saving clinic settings:', error)
+  try {
+    await prisma.clinicSettings.upsert({
+      where: { psychologistId: psychologist.id },
+      update: {
+        appointmentTypes: appointmentTypes.length > 0 ? appointmentTypes : ['presencial', 'online'],
+        defaultAppointmentType: defaultAppointmentType || 'presencial',
+        showPatientPhone,
+        showPatientEmail,
+        requirePatientPhone,
+        requirePatientEmail,
+        sendEmailReminder,
+        reminderHoursBefore,
+      },
+      create: {
+        psychologistId: psychologist.id,
+        appointmentTypes: appointmentTypes.length > 0 ? appointmentTypes : ['presencial', 'online'],
+        defaultAppointmentType: defaultAppointmentType || 'presencial',
+        showPatientPhone,
+        showPatientEmail,
+        requirePatientPhone,
+        requirePatientEmail,
+        sendEmailReminder,
+        reminderHoursBefore,
+      },
+    })
+  } catch (e) {
+    console.error('Error saving clinic settings:', e)
     return { error: 'Erro ao salvar configurações avançadas' }
   }
 

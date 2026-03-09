@@ -1,6 +1,7 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedPsychologist } from '@/lib/auth-helpers'
+import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 
 const clinicDataSchema = z.object({
@@ -17,13 +18,8 @@ const clinicDataSchema = z.object({
 })
 
 export async function saveClinicData(formData: FormData) {
-  const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) {
-    return { error: 'Usuário não autenticado' }
-  }
+  const { error, psychologist, userId } = await getAuthenticatedPsychologist()
+  if (error || !userId) return { error: error || 'Usuário não autenticado' }
 
   const rawData = {
     fullName: formData.get('fullName'),
@@ -41,31 +37,47 @@ export async function saveClinicData(formData: FormData) {
     return { error: firstError?.message || 'Erro de validação' }
   }
 
-  const { data: existing } = await supabase
-    .from('psychologists')
-    .select('id')
-    .eq('slug', validated.data.slug)
-    .neq('user_id', user.id)
-    .single()
+  // Check slug uniqueness
+  const existing = await prisma.psychologist.findFirst({
+    where: {
+      slug: validated.data.slug,
+      NOT: { userId },
+    },
+    select: { id: true },
+  })
 
   if (existing) {
     return { error: 'Esta URL já está em uso. Escolha outra.' }
   }
 
-  const { error: updateError } = await supabase
-    .from('psychologists')
-    .update({
-      full_name: validated.data.fullName,
-      slug: validated.data.slug,
-      crp: validated.data.crp,
-      specialty: validated.data.specialty || null,
-      bio: validated.data.bio || null,
-      timezone: validated.data.timezone || 'America/Sao_Paulo',
-    })
-    .eq('user_id', user.id)
-
-  if (updateError) {
-    return { error: updateError.message }
+  try {
+    if (psychologist) {
+      await prisma.psychologist.update({
+        where: { id: psychologist.id },
+        data: {
+          fullName: validated.data.fullName,
+          slug: validated.data.slug,
+          crp: validated.data.crp,
+          specialty: validated.data.specialty || null,
+          bio: validated.data.bio || null,
+          timezone: validated.data.timezone || 'America/Sao_Paulo',
+        },
+      })
+    } else {
+      await prisma.psychologist.create({
+        data: {
+          userId,
+          fullName: validated.data.fullName,
+          slug: validated.data.slug,
+          crp: validated.data.crp,
+          specialty: validated.data.specialty || null,
+          bio: validated.data.bio || null,
+          timezone: validated.data.timezone || 'America/Sao_Paulo',
+        },
+      })
+    }
+  } catch (e: any) {
+    return { error: e.message || 'Erro ao salvar dados' }
   }
 
   return { success: true }

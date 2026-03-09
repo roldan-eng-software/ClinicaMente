@@ -1,0 +1,450 @@
+// ClinicaMente - Prisma Schema
+// Comprehensive schema for psychology clinic management
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ==========================================
+// AUTH MODELS (NextAuth.js)
+// ==========================================
+
+model User {
+  id                     String    @id @default(cuid())
+  email                  String    @unique
+  name                   String?
+  emailVerified          DateTime?
+  image                  String?
+  password               String?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  accounts               Account[]
+  sessions               Session[]
+  psychologist           Psychologist?
+
+  // Stripe SaaS Fields
+  stripeCustomerId       String?   @unique
+  stripeSubscriptionId   String?   @unique
+  stripePriceId          String?
+  stripeCurrentPeriodEnd DateTime?
+  hasAccess              Boolean   @default(false)
+}
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@id([identifier, token])
+}
+
+// ==========================================
+// DOMAIN MODELS
+// ==========================================
+
+model Psychologist {
+  id                    String    @id @default(cuid())
+  userId                String    @unique
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  fullName              String
+  slug                  String    @unique
+  crp                   String?
+  specialty             String?
+  bio                   String?
+  timezone              String    @default("America/Sao_Paulo")
+  onboardingCompleted   Boolean   @default(false)
+
+  // Plan
+  plan                  String    @default("free")
+  planExpiresAt         DateTime?
+
+  // Clinic config
+  clinicName            String?
+  clinicAddress         String?
+  clinicPhone           String?
+  clinicEmail           String?
+  primaryColor          String    @default("#3B82F6")
+  secondaryColor        String    @default("#10B981")
+  sessionDurationMinutes Int      @default(50)
+  eventTypesToShow      String[]  @default(["appointment", "blocked_time"])
+  eventCardOrder        String[]  @default(["time", "patient", "type"])
+
+  // Stripe (for patient-facing payments)
+  stripeAccountId       String?   @unique
+  stripeConnected       Boolean   @default(false)
+
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  // Relations
+  patients              Patient[]
+  appointments          Appointment[]
+  slots                 Slot[]
+  rooms                 Room[]
+  collaborators         Collaborator[]
+  payments              Payment[]
+  expenses              Expense[]
+  tasks                 Task[]
+  blockedTimes          BlockedTime[]
+  clinicSettings        ClinicSettings?
+  reminders             Reminder[]
+  consentLogs           ConsentLog[]
+  availabilityRules     AvailabilityRule[]
+  prontuarios           Prontuario[]
+
+  @@map("psychologists")
+}
+
+model Patient {
+  id              String    @id @default(cuid())
+  psychologistId  String
+  psychologist    Psychologist @relation(fields: [psychologistId], references: [id], onDelete: Cascade)
+
+  fullName        String
+  email           String?
+  phone           String?
+  cpf             String?
+  birthDate       DateTime?
+  notes           String?
+  active          Boolean   @default(true)
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  appointments    Appointment[]
+  payments        Payment[]
+  consentLogs     ConsentLog[]
+  prontuarios     Prontuario[]
+
+  @@map("patients")
+}
+
+model Appointment {
+  id              String    @id @default(cuid())
+  psychologistId  String
+  psychologist    Psychologist @relation(fields: [psychologistId], references: [id], onDelete: Cascade)
+  patientId       String?
+  patient         Patient?  @relation(fields: [patientId], references: [id], onDelete: SetNull)
+  slotId          String?
+  slot            Slot?     @relation(fields: [slotId], references: [id], onDelete: SetNull)
+  roomId          String?
+  room            Room?     @relation(fields: [roomId], references: [id], onDelete: SetNull)
+
+  dateTime        DateTime
+  endTime         DateTime?
+  status          String    @default("scheduled") // scheduled, completed, cancelled, no_show
+  type            String    @default("presencial") // presencial, online
+  patientName     String?
+  patientEmail    String?
+  patientPhone    String?
+  notes           String?
+  meetingUrl      String?
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  payments        Payment[]
+  reminders       Reminder[]
+
+  @@map("appointments")
+}
+
+model Slot {
+  id              String    @id @default(cuid())
+  psychologistId  String
+  psychologist    Psychologist @relation(fields: [psychologistId], references: [id], onDelete: Cascade)
+  roomId          String?
+  room            Room?     @relation(fields: [roomId], references: [id], onDelete: SetNull)
+
+  dayOfWeek       Int       // 0=Sunday, 6=Saturday
+  startTime       String    // "09:00"
+  endTime         String    // "10:00"
+  isActive        Boolean   @default(true)
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  appointments    Appointment[]
+
+  @@map("slots")
+}
+
+model Room {
+  id              String    @id @default(cuid())
+  psychologistId  String
+  psychologist    Psychologist @relation(fields: [psychologistId], references: [id], onDelete: Cascade)
+
+  name            String
+  color           String    @default("#3B82F6")
+  appointmentType String    @default("presencial")
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  slots           Slot[]
+  appointments    Appointment[]
+
+  @@map("rooms")
+}
+
+model Collaborator {
+  id              String    @id @default(cuid())
+  psychologistId  String
+  psychologist    Psychologist @relation(fields: [psychologistId], references: [id], onDelete: Cascade)
+
+  fullName        String
+  email           String
+  phone           String?
+  crp             String?
+  specialty       String?
+  bio             String?
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([psychologistId, email])
+  @@map("collaborators")
+}
+
+model Payment {
+  id              String    @id @default(cuid())
+  psychologistId  String
+  psychologist    Psychologist @relation(fields: [psychologistId], references: [id], onDelete: Cascade)
+  patientId       String?
+  patient         Patient?  @relation(fields: [patientId], references: [id], onDelete: SetNull)
+  appointmentId   String?
+  appointment     Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  amount          Float
+  status          String    @default("pending") // pending, paid, refunded, cancelled
+  method          String?   // pix, card, cash, transfer
+  description     String?
+  dueDate         DateTime?
+  paidAt          DateTime?
+  stripePaymentId String?   @unique
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@map("payments")
+}
+
+model Expense {
+  id              String    @id @default(cuid())
+  psychologistId  String
+  psychologist    Psychologist @relation(fields: [psychologistId], references: [id], onDelete: Cascade)
+
+  description     String
+  amount          Float
+  category        String?
+  date            DateTime
+  paid            Boolean   @default(false)
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@map("expenses")
+}
+
+model Task {
+  id              String    @id @default(cuid())
+  psychologistId  String
+  psychologist    Psychologist @relation(fields: [psychologistId], references: [id], onDelete: Cascade)
+
+  title           String
+  completed       Boolean   @default(false)
+  dueDate         DateTime?
+  priority        String    @default("medium") // low, medium, high
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@map("tasks")
+}
+
+model BlockedTime {
+  id              String    @id @default(cuid())
+  psychologistId  String
+  psychologist    Psychologist @relation(fields: [psychologistId], references: [id], onDelete: Cascade)
+
+  startTime       DateTime
+  endTime         DateTime
+  reason          String?
+  recurring       Boolean   @default(false)
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@map("blocked_times")
+}
+
+model ClinicSettings {
+  id                    String    @id @default(cuid())
+  psychologistId        String    @unique
+  psychologist          Psychologist @relation(fields: [psychologistId], references: [id], onDelete: Cascade)
+
+  appointmentTypes      String[]  @default(["presencial", "online"])
+  defaultAppointmentType String   @default("presencial")
+  showPatientPhone      Boolean   @default(true)
+  showPatientEmail      Boolean   @default(true)
+  requirePatientPhone   Boolean   @default(false)
+  requirePatientEmail   Boolean   @default(false)
+  sendEmailReminder     Boolean   @default(true)
+  reminderHoursBefore   Int       @default(24)
+
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@map("clinic_settings")
+}
+
+model Reminder {
+  id              String    @id @default(cuid())
+  psychologistId  String
+  psychologist    Psychologist @relation(fields: [psychologistId], references: [id], onDelete: Cascade)
+  appointmentId   String?
+  appointment     Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  token           String    @unique @default(cuid())
+  type            String    @default("email") // email, sms, whatsapp
+  status          String    @default("pending") // pending, sent, confirmed, cancelled
+  sentAt          DateTime?
+  confirmedAt     DateTime?
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@map("reminders")
+}
+
+model ConsentLog {
+  id              String    @id @default(cuid())
+  psychologistId  String?
+  psychologist    Psychologist? @relation(fields: [psychologistId], references: [id], onDelete: SetNull)
+  patientId       String?
+  patient         Patient?  @relation(fields: [patientId], references: [id], onDelete: SetNull)
+
+  consentType     String    // cookies, data_processing, marketing
+  granted         Boolean   @default(false)
+  ipAddress       String?
+  userAgent       String?
+
+  createdAt       DateTime  @default(now())
+
+  @@map("consent_logs")
+}
+
+model AvailabilityRule {
+  id              String    @id @default(cuid())
+  psychologistId  String
+  psychologist    Psychologist @relation(fields: [psychologistId], references: [id], onDelete: Cascade)
+
+  dayOfWeek       Int
+  startTime       String
+  endTime         String
+  isActive        Boolean   @default(true)
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@map("availability_rules")
+}
+
+model Prontuario {
+  id              String    @id @default(cuid())
+  psychologistId  String
+  psychologist    Psychologist @relation(fields: [psychologistId], references: [id], onDelete: Cascade)
+  patientId       String
+  patient         Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  status          String    @default("ativo")
+  version         Int       @default(1)
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  secoes          ProntuarioSecao[]
+  sessoes         SessaoClinica[]
+
+  @@unique([psychologistId, patientId])
+  @@map("prontuarios")
+}
+
+model ProntuarioSecao {
+  id              String    @id @default(cuid())
+  prontuarioId    String
+  prontuario      Prontuario @relation(fields: [prontuarioId], references: [id], onDelete: Cascade)
+
+  tipoSecao       String
+  dadosJson       Json      @default("{}")
+  dataPreenchimento DateTime?
+  preenchidoPor   String?
+  versaoRegistro  Int       @default(1)
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([prontuarioId, tipoSecao])
+  @@map("prontuario_secoes")
+}
+
+model SessaoClinica {
+  id              String    @id @default(cuid())
+  prontuarioId    String
+  prontuario      Prontuario @relation(fields: [prontuarioId], references: [id], onDelete: Cascade)
+
+  numeroSessao    Int
+  dataSessao      String
+  horaSessao      String?
+  duracaoMinutos  Int       @default(50)
+  tipoSessao      String    @default("presencial")
+  temaPrincipal   String?
+  intervencoes    String?
+  evolucao        String?
+  observacoes     String?
+  proximasTarefas String?
+  presenca        String    @default("compareceu")
+  registradasPor  String?
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@map("sessoes_clinicas")
+}

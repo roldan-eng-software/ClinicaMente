@@ -42,3 +42,5 @@ next-env.d.ts
 
 # supabase (deployed separately)
 supabase/functions
+
+/src/generated/prisma

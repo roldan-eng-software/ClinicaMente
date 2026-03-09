@@ -1,312 +1,204 @@
-import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
-import "./landing.css";
 import CookieBanner from "@/components/CookieBanner";
-import PricingPlans from "@/components/PricingPlans";
 
-export const metadata: Metadata = {
-  title:
-    "Software de gestão para psicólogos com agenda online e prontuário eletrônico",
-  description:
-    "Conheça a ClínicaMente, a plataforma de gestão para psicólogos com agenda online, prontuário eletrônico, finanças e lembretes automáticos para reduzir faltas e organizar seu consultório.",
-};
+export default function LandingPage() {
+  const currentYear = new Date().getFullYear();
+  const projectName = "ClínicaMente";
 
-const jsonLd = {
-  "@context": "https://schema.org",
-  "@graph": [
-    {
-      "@type": "SoftwareApplication",
-      name: "ClínicaMente",
-      applicationCategory: "BusinessApplication",
-      operatingSystem: "Web",
-      inLanguage: "pt-BR",
-      description:
-        "Software de gestão para psicólogos com agenda online, prontuário eletrônico, controle financeiro e lembretes automáticos para pacientes.",
-    },
-    {
-      "@type": "Organization",
-      name: "ClínicaMente",
-      description:
-        "Plataforma de gestão para consultórios de psicologia e profissionais da saúde mental.",
-      address: {
-        "@type": "PostalAddress",
-        addressCountry: "BR",
-      },
-    },
-  ],
-};
-
-export default function Home() {
   return (
-    <div className="landing">
-      <header className="landing-header">
-        <div className="landing-logo">
-          <span className="landing-logo-mark" />
-          <span className="landing-logo-text">
-            Clínica<span>Mente</span>
-          </span>
-        </div>
+    <div className="min-h-screen flex flex-col font-sans bg-gray-50">
+      
+      {/* 1. NAVBAR */}
+      <header className="fixed top-0 w-full bg-white/90 backdrop-blur-md shadow-sm z-50 transition-all border-b border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
+          
+          {/* Esquerda: Favicon e Logotipo em PNG */}
+          <div className="flex items-center gap-3">
+            <div className="relative w-8 h-8">
+              <Image src="/favicon.ico" alt="Ícone" fill className="object-contain" />
+            </div>
+            <div className="relative w-28 h-8 hidden sm:block">
+              {/* <Image src="/logotipo.png" alt="Logotipo do Projeto" fill className="object-contain" /> */}
+              <span className="font-bold text-lg text-blue-700">ClínicaMente</span>
+            </div>
+          </div>
 
-        <nav className="landing-nav">
-          <a href="#features">Funcionalidades</a>
-          <a href="#how-it-works">Como funciona</a>
-          <a href="#benefits">Benefícios</a>
-          <a href="#pricing">Planos</a>
-        </nav>
+          {/* Centro: Nome do Projeto */}
+          <div className="absolute left-1/2 transform -translate-x-1/2 font-bold text-xl text-gray-800 tracking-tight hidden md:block">
+            {projectName}
+          </div>
 
-        <div className="landing-header-actions">
-          <Link href="/login" className="landing-login-link">
-            Entrar
-          </Link>
-          <Link href="/signup" className="landing-cta-button landing-cta-button--outline">
-            Criar conta
-          </Link>
+          {/* Direita: Botão Entrar */}
+          <div className="flex items-center gap-4">
+            <Link 
+              href="/login" 
+              className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-medium transition-all shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            >
+              Entrar
+            </Link>
+          </div>
         </div>
       </header>
 
-      <main className="landing-main">
-        <section className="landing-hero">
-          <div className="landing-hero-content">
-            <div className="landing-pill">
-              <span className="landing-pill-dot" />
-              Plataforma completa de gestão para psicólogos
-            </div>
-
-            <h1>
-              Organize sua clínica,
-              <span> cuide mais dos seus pacientes.</span>
-            </h1>
-
-            <p>
-              Agendamentos online, prontuários seguros, finanças em um só lugar e lembretes
-              automáticos. Tudo pensado para o dia a dia do psicólogo moderno.
-            </p>
-
-            <div className="landing-hero-actions">
-              <Link href="/signup" className="landing-cta-button">
-                Começar agora
-              </Link>
-              <Link href="/login" className="landing-secondary-link">
-                Já tenho conta
-              </Link>
-            </div>
-
-            <div className="landing-hero-metas">
-              <div>
-                <strong>Menos no-show</strong>
-                <span>com lembretes automáticos por e-mail</span>
-              </div>
-              <div>
-                <strong>Dados protegidos</strong>
-                <span>segurança pensada para sigilo profissional</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="landing-hero-visual">
-            <div className="landing-hero-card landing-hero-card--primary">
-              <div className="landing-hero-card-header">
-                <span className="landing-badge">Agenda de hoje</span>
-                <span className="landing-status-dot" />
-              </div>
-              <ul className="landing-appointments">
-                <li>
-                  <span className="time">09:00</span>
-                  <span className="name">Ana Paula</span>
-                  <span className="type">Online</span>
-                </li>
-                <li>
-                  <span className="time">11:00</span>
-                  <span className="name">Carlos Silva</span>
-                  <span className="type">Presencial</span>
-                </li>
-                <li>
-                  <span className="time">15:30</span>
-                  <span className="name">Mariana Souza</span>
-                  <span className="type">Online</span>
-                </li>
-              </ul>
-            </div>
-
-            <div className="landing-hero-card landing-hero-card--secondary">
-              <p className="landing-metric-title">Visão geral do mês</p>
-              <div className="landing-metrics">
-                <div>
-                  <span className="label">Sessões realizadas</span>
-                  <span className="value">42</span>
-                </div>
-                <div>
-                  <span className="label">Taxa de presença</span>
-                  <span className="value">96%</span>
-                </div>
-                <div>
-                  <span className="label">Receita prevista</span>
-                  <span className="value">R$ 7.480</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="landing-orbit landing-orbit--one" />
-            <div className="landing-orbit landing-orbit--two" />
-          </div>
-        </section>
-
-        <section id="features" className="landing-section">
-          <div className="landing-section-header">
-            <h2>Funcionalidades que simplificam sua rotina</h2>
-            <p>
-              Da primeira consulta ao acompanhamento financeiro, a ClínicaMente cuida dos detalhes
-              para você focar no cuidado com as pessoas.
-            </p>
-          </div>
-
-          <div className="landing-grid">
-            <article className="landing-feature-card">
-              <div className="icon icon--schedule" />
-              <h3>Agenda inteligente</h3>
-              <p>
-                Visualize sua semana em segundos, crie horários recorrentes e receba agendamentos
-                online sem perder o controle.
-              </p>
-            </article>
-
-            <article className="landing-feature-card">
-              <div className="icon icon--patients" />
-              <h3>Prontuários organizados</h3>
-              <p>
-                Registros clínicos estruturados, histórico de sessões e observações importantes em
-                um só lugar.
-              </p>
-            </article>
-
-            <article className="landing-feature-card">
-              <div className="icon icon--finance" />
-              <h3>Finanças descomplicadas</h3>
-              <p>
-                Acompanhe recebimentos, pendências e faturamento mensal sem planilhas complicadas.
-              </p>
-            </article>
-
-            <article className="landing-feature-card">
-              <div className="icon icon--reminders" />
-              <h3>Lembretes automáticos</h3>
-              <p>
-                Reduza faltas com mensagens automáticas de confirmação e lembrete para seus
-                pacientes.
-              </p>
-            </article>
-          </div>
-        </section>
-
-        <section id="how-it-works" className="landing-section landing-section--muted">
-          <div className="landing-section-header">
-            <h2>Comece em poucos minutos</h2>
-            <p>
-              Sem instalação, sem complicação. Crie sua conta, personalize sua clínica e comece a
-              atender com mais organização hoje mesmo.
-            </p>
-          </div>
-
-          <ol className="landing-steps">
-            <li>
-              <span className="step-number">1</span>
-              <div>
-                <h3>Crie sua conta</h3>
-                <p>Cadastro rápido pensado para profissionais da psicologia.</p>
-              </div>
-            </li>
-            <li>
-              <span className="step-number">2</span>
-              <div>
-                <h3>Configure sua agenda</h3>
-                <p>Defina dias, horários, modalidades e valores das sessões.</p>
-              </div>
-            </li>
-            <li>
-              <span className="step-number">3</span>
-              <div>
-                <h3>Compartilhe o link com pacientes</h3>
-                <p>Permita que novos pacientes agendem diretamente com você.</p>
-              </div>
-            </li>
-          </ol>
-        </section>
-
-        <section id="benefits" className="landing-section landing-section--columns">
-          <div className="landing-section-header">
-            <h2>Feito por quem entende a rotina de consultório</h2>
-            <p>
-              A ClínicaMente nasceu para apoiar psicólogos em todas as etapas do atendimento, do
-              primeiro contato ao acompanhamento contínuo.
-            </p>
-          </div>
-
-          <div className="landing-benefits">
-            <div className="landing-benefit">
-              <p className="highlight">+ tempo com pacientes</p>
-              <p>Menos tempo em tarefas administrativas e mais foco no que importa.</p>
-            </div>
-            <div className="landing-benefit">
-              <p className="highlight">+ previsibilidade financeira</p>
-              <p>Visão clara de recebimentos e próximos atendimentos.</p>
-            </div>
-            <div className="landing-benefit">
-              <p className="highlight">+ profissionalismo</p>
-              <p>Experiência moderna e organizada para quem chega até sua clínica.</p>
-            </div>
-          </div>
-        </section>
-
-        <PricingPlans />
-
-        <section className="landing-section landing-cta-section">
-          <div className="landing-cta-panel">
-            <div>
-              <h2>Pronto para dar o próximo passo na gestão da sua clínica?</h2>
-              <p>
-                Crie sua conta em poucos minutos e experimente uma rotina mais leve, com tecnologia
-                pensada para o seu consultório.
-              </p>
-            </div>
-            <div className="landing-cta-actions">
-              <Link href="/signup" className="landing-cta-button landing-cta-button--large">
-                Criar conta gratuita
-              </Link>
-              <Link href="/login" className="landing-secondary-link">
-                Já sou cliente
-              </Link>
-            </div>
-          </div>
-        </section>
-      </main>
-
-      <footer className="landing-footer">
-        <div className="landing-footer-inner">
-          <div className="landing-footer-brand">
-            <span className="landing-logo-text">
-              Clínica<span>Mente</span>
-            </span>
-            <span className="landing-footer-note">
-              Gestão moderna para consultórios de psicologia.
-            </span>
-          </div>
-          <div className="landing-footer-links">
-            <Link href="/login">Acessar sistema</Link>
-            <Link href="/signup">Criar conta</Link>
-            <Link href="/privacidade">Privacidade</Link>
-            <Link href="/termos">Termos de Uso</Link>
-            <Link href="/politica-cookies">Cookies</Link>
+      {/* 2. HERO SECTION Larga e Reativa */}
+      <section className="relative w-full h-screen min-h-[600px] flex items-center justify-center mt-16">
+        <div className="absolute inset-0 -z-10 bg-blue-900">
+          {/* O ideal é ter a imagem hero-background.png na pasta public */}
+          {/* <Image 
+            src="/hero-background.png" 
+            alt="Hero Background" 
+            fill 
+            className="object-cover object-center"
+            priority
+          /> */}
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 opacity-90" />
+        </div>
+        
+        <div className="text-center px-4 max-w-4xl mx-auto z-10 animate-fade-in-up">
+          <h1 className="text-4xl md:text-6xl font-extrabold text-white tracking-tight mb-6 leading-tight">
+            Organize sua clínica, <span className="text-blue-300">cuide mais dos seus pacientes.</span>
+          </h1>
+          <p className="text-lg md:text-xl text-gray-200 mb-8 max-w-2xl mx-auto">
+            Agendamentos online, prontuários seguros, finanças em um só lugar e lembretes automáticos. Tudo pensado para o dia a dia do psicólogo moderno.
+          </p>
+          <div className="flex items-center justify-center gap-4">
+             <Link href="/signup" className="bg-white text-blue-800 hover:bg-gray-100 px-8 py-3 rounded-lg font-semibold transition-all shadow-lg hover:scale-105">
+                Começar agora livre
+             </Link>
           </div>
         </div>
-        <p className="landing-footer-copy">
-          © {new Date().getFullYear()} ClínicaMente. Todos os direitos reservados.
-        </p>
+      </section>
+
+      {/* 3. PADRÃO APRESENTAÇÃO DE SERVIÇOS */}
+      <main className="flex-grow bg-gray-50 py-24">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl font-bold text-gray-900">Funcionalidades que simplificam sua rotina</h2>
+            <p className="mt-4 text-gray-600">Da primeira consulta ao acompanhamento financeiro, a ClínicaMente cuida dos detalhes.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div className="bg-white p-8 rounded-2xl shadow-sm hover:shadow-lg transition-all hover:-translate-y-1 border border-gray-100 group">
+              <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform text-2xl">
+                📅
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">Agenda Inteligente</h3>
+              <p className="text-gray-600 leading-relaxed text-sm">
+                Visualize sua semana em segundos, crie horários recorrentes e receba agendamentos online sem perder o controle.
+              </p>
+            </div>
+            
+            <div className="bg-white p-8 rounded-2xl shadow-sm hover:shadow-lg transition-all hover:-translate-y-1 border border-gray-100 group">
+              <div className="w-14 h-14 bg-green-50 text-green-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform text-2xl">
+                🔒
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">Prontuários Seguros</h3>
+              <p className="text-gray-600 leading-relaxed text-sm">
+                Registros clínicos estruturados, histórico de sessões e observações importantes em um só lugar.
+              </p>
+            </div>
+
+            <div className="bg-white p-8 rounded-2xl shadow-sm hover:shadow-lg transition-all hover:-translate-y-1 border border-gray-100 group">
+              <div className="w-14 h-14 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform text-2xl">
+                💰
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">Finanças Descomplicadas</h3>
+              <p className="text-gray-600 leading-relaxed text-sm">
+                 Acompanhe recebimentos, pendências e faturamento mensal sem planilhas complicadas.
+              </p>
+            </div>
+
+            <div className="bg-white p-8 rounded-2xl shadow-sm hover:shadow-lg transition-all hover:-translate-y-1 border border-gray-100 group">
+              <div className="w-14 h-14 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform text-2xl">
+                🔔
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">Lembretes Automáticos</h3>
+              <p className="text-gray-600 leading-relaxed text-sm">
+                Reduza faltas com mensagens automáticas de confirmação e lembrete para seus pacientes.
+              </p>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      {/* 4. CARROSSEL DE IMAGENS (LARGURA TOTAL) */}
+      <section className="w-full bg-gray-100 overflow-hidden relative">
+        <div className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+          
+          {/* Loop de 5 imagens representativas. Requer criar as imagens na pasta public do projeto.  */}
+          {[1, 2, 3, 4, 5].map((idx) => (
+            <div 
+              key={idx} 
+              className="w-full md:w-1/2 lg:w-1/3 flex-none snap-center relative h-[400px] sm:h-[450px] bg-slate-300 border-r border-white"
+            >
+              {/* <Image 
+                src={`/carousel-${idx}.jpg`} 
+                alt={`Imagem Destaque ${idx}`} 
+                fill 
+                className="object-cover"
+              /> */}
+              {/* placeholder visivel enquanto as imagens nao existem */}
+              <div className="absolute inset-0 flex items-center justify-center text-slate-500 font-bold opacity-50 text-2xl">
+                 Foto do Sistema {idx}
+              </div>
+              
+              <div className="absolute bottom-0 w-full bg-gradient-to-t from-black/80 via-black/40 to-transparent p-6 pt-24 text-center">
+                <p className="text-white text-base md:text-lg font-medium drop-shadow-md">
+                   {idx === 1 && "Agenda dinâmica e intuitiva para não perder nenhum horário."}
+                   {idx === 2 && "Prontuários seguros e criptografados para garantir a LGPD."}
+                   {idx === 3 && "Visão financeira clara do seu faturamento mensal."}
+                   {idx === 4 && "Área do paciente para agendamentos simplificados."}
+                   {idx === 5 && "Relatórios completos sobre a sua clínica."}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Pricing / Planos (Call To Action pre-footer) */}
+      <section className="bg-white py-24">
+         <div className="max-w-4xl mx-auto px-4 text-center">
+             <h2 className="text-3xl font-bold text-gray-900 mb-6">Pronto para dar o próximo passo na gestão da sua clínica?</h2>
+             <p className="text-lg text-gray-600 mb-8">
+                Crie sua conta em poucos minutos e experimente uma rotina mais leve, com tecnologia pensada para o seu consultório.
+             </p>
+             <Link href="/pricing" className="inline-block bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-xl font-bold text-lg transition-all hover:scale-105 shadow-xl">
+                Ver Planos e Preços
+             </Link>
+         </div>
+      </section>
+
+      {/* 5. FOOTER */}
+      <footer className="bg-gray-900 text-gray-400 py-10 border-t border-gray-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
+          
+          <div className="text-sm">
+            &copy; {currentYear} {projectName}. Todos os direitos reservados.
+          </div>
+          
+          <div className="flex gap-4 text-sm">
+             <Link href="/privacidade" className="hover:text-gray-200">Política de Privacidade</Link>
+             <Link href="/termos" className="hover:text-gray-200">Termos de Uso</Link>
+          </div>
+
+          <div className="text-sm">
+            Desenvolvido por:{' '}
+            <a 
+              href="https://roldan-eng-software.github.io/roldan-page/" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="font-semibold text-blue-400 hover:text-blue-300 transition-colors"
+            >
+              Roldan Eng Software
+            </a>
+          </div>
+          
+        </div>
       </footer>
+      
       <CookieBanner />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
     </div>
   );
 }

@@ -1,8 +1,8 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { auth } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
 import { headers } from 'next/headers'
-import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { createCheckoutSession } from '@/lib/stripe'
 import { checkPlanLimit } from '@/lib/plan-check'
@@ -21,52 +21,12 @@ const bookSlotSchema = z.object({
   }),
 })
 
-async function sendWhatsAppNotification(phone: string, message: string) {
-  const whatsappApiKey = process.env.WHATSAPP_API_KEY
-  
-  if (!whatsappApiKey || whatsappApiKey === 'SUA_WHATSAPP_API_KEY_AQUI') {
-    console.log('WhatsApp API não configurada. Mensagem:', message)
-    return
-  }
-
-  const cleanPhone = phone.replace(/\D/g, '')
-  const whatsappNumber = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`
-  
-  try {
-    const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${process.env.TWILIO_ACCOUNT_SID}/Messages.json`, {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Basic ' + Buffer.from(`${process.env.TWILIO_ACCOUNT_SID}:${whatsappApiKey}`).toString('base64'),
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        To: `whatsapp:+${whatsappNumber}`,
-        From: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
-        Body: message,
-      }),
-    })
-
-    if (!response.ok) {
-      const error = await response.text()
-      console.error('Erro ao enviar WhatsApp:', error)
-    }
-  } catch (error) {
-    console.error('Erro ao enviar WhatsApp:', error)
-  }
-}
-
-async function formatPhoneForPatient(phone: string) {
-  const cleanPhone = phone.replace(/\D/g, '')
-  return cleanPhone.length >= 10 ? cleanPhone : null
-}
-
 export async function bookSlot(formData: FormData) {
   const headersList = await headers()
   const userAgent = headersList.get('user-agent') || 'unknown'
-  const forwardedFor = headersList.get('x-forwarded-for') || 'unknown'
-  const ip = forwardedFor.split(',')[0].trim()
+  const ip = (headersList.get('x-forwarded-for') || 'unknown').split(',')[0].trim()
 
-  const supabase = await createClient()
+  const session = await auth()
 
   const rawData = {
     slotId: formData.get('slotId'),
@@ -81,222 +41,140 @@ export async function bookSlot(formData: FormData) {
   }
 
   const validated = bookSlotSchema.safeParse(rawData)
-
   if (!validated.success) {
-    const firstError = validated.error.issues[0]
-    return { error: firstError?.message || 'Erro de validação' }
+    return { error: validated.error.issues[0]?.message || 'Erro de validação' }
   }
 
   const { slotId, patientData, appointmentType } = validated.data
 
-  const { data: { user } } = await supabase.auth.getUser()
+  if (!session?.user?.id) return { error: 'Usuário não autenticado' }
 
-  let patientId: string
-  let psychologistId: string
-  let patientEmail: string
+  // Find patient
+  const patient = await prisma.patient.findFirst({
+    where: { email: patientData.email },
+    select: { id: true, psychologistId: true, email: true },
+  })
 
-  if (user) {
-    const { data: existingPatient, error: patientError } = await supabase
-      .from('patients')
-      .select('id, psychologist_id, email')
-      .eq('user_id', user.id)
-      .maybeSingle()
+  if (!patient) return { error: 'Paciente não encontrado. Faça login novamente.' }
 
-    if (patientError) {
-      console.error('Erro ao buscar paciente:', patientError)
-    }
+  const psychologistId = patient.psychologistId
 
-    if (existingPatient) {
-      patientId = existingPatient.id
-      psychologistId = existingPatient.psychologist_id
-      patientEmail = existingPatient.email
-    } else {
-      return { error: 'Paciente não encontrado. Faça login novamente.' }
-    }
-  } else {
-    return { error: 'Usuário não autenticado' }
-  }
+  const psychologist = await prisma.psychologist.findUnique({
+    where: { id: psychologistId },
+    select: { id: true, fullName: true, slug: true },
+  })
 
-  const { data: psychologist } = await supabase
-    .from('psychologists')
-    .select('id, full_name, default_session_price')
-    .eq('id', psychologistId)
-    .single()
-
-  if (!psychologist) {
-    return { error: 'Psicólogo não encontrado' }
-  }
+  if (!psychologist) return { error: 'Psicólogo não encontrado' }
 
   const planCheck = await checkPlanLimit(psychologistId, 'create_appointment')
   if (!planCheck.allowed) {
-    return { 
-      error: planCheck.limit 
+    return {
+      error: planCheck.limit
         ? `Limite de ${planCheck.limit} consultas/mês atingido para este plano`
         : `Funcionalidade não disponível no seu plano`,
-      upgradeUrl: planCheck.upgradeUrl
+      upgradeUrl: planCheck.upgradeUrl,
     }
   }
 
-  const { data: slot, error: slotError } = await supabase
-    .from('slots')
-    .select('id, start_at, status')
-    .eq('id', slotId)
-    .eq('psychologist_id', psychologistId)
-    .single()
+  // Find slot
+  const slot = await prisma.slot.findFirst({
+    where: { id: slotId, psychologistId, isActive: true },
+  })
 
-  if (slotError || !slot) {
-    return { error: 'Slot não encontrado' }
+  if (!slot) return { error: 'Slot não encontrado ou já reservado' }
+
+  // Create appointment
+  const now = new Date()
+  const dayOfWeek = slot.dayOfWeek
+  const [startHour, startMin] = slot.startTime.split(':').map(Number)
+
+  // Find the next occurrence of this day of week
+  const appointmentDate = new Date(now)
+  while (appointmentDate.getDay() !== dayOfWeek) {
+    appointmentDate.setDate(appointmentDate.getDate() + 1)
   }
+  appointmentDate.setHours(startHour, startMin, 0, 0)
 
-  if (slot.status !== 'available') {
-    return { error: 'Este horário já foi reservado por outro paciente' }
-  }
-
-  const { error: updateSlotError } = await supabase
-    .from('slots')
-    .update({ 
-      status: 'booked',
-      appointment_type: appointmentType || 'presencial'
+  let appointment
+  try {
+    appointment = await prisma.appointment.create({
+      data: {
+        psychologistId,
+        patientId: patient.id,
+        slotId,
+        dateTime: appointmentDate,
+        status: 'scheduled',
+        type: appointmentType || 'presencial',
+        patientName: patientData.name,
+        patientEmail: patientData.email,
+        patientPhone: patientData.phone || null,
+      },
     })
-    .eq('id', slotId)
-    .eq('status', 'available')
-
-  if (updateSlotError) {
-    return { error: 'Erro ao reservar horário. Tente novamente.' }
-  }
-
-  const { data: updatedSlot } = await supabase
-    .from('slots')
-    .select('status')
-    .eq('id', slotId)
-    .single()
-
-  if (updatedSlot?.status !== 'booked') {
-    return { error: 'Este horário acabou de ser reservado. Por favor, escolha outro.' }
-  }
-
-  const { data: appointment, error: appointmentError } = await supabase
-    .from('appointments')
-    .insert({
-      psychologist_id: psychologistId,
-      patient_id: patientId,
-      slot_id: slotId,
-      status: 'scheduled',
-    })
-    .select()
-    .single()
-
-  if (appointmentError) {
-    await supabase
-      .from('slots')
-      .update({ status: 'available' })
-      .eq('id', slotId)
-    
+  } catch (e) {
+    console.error('Error creating appointment:', e)
     return { error: 'Erro ao criar agendamento' }
   }
 
-  if (patientData.phone) {
-    const formattedDate = new Date(slot.start_at).toLocaleDateString('pt-BR', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    })
-    const formattedTime = new Date(slot.start_at).toLocaleTimeString('pt-BR', {
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-    const appointmentTypeText = appointmentType === 'videoconferencia' ? 'Videoconferência' : 'Presencial'
-    
-    const whatsappMessage = `Olá ${patientData.name}! Sua consulta com ${psychologist.full_name} foi agendada com sucesso.\n\n📅 Data: ${formattedDate}\n⏰ Horário: ${formattedTime}\n🏥 Tipo: ${appointmentTypeText}\n\nEm caso de dúvidas, entre em contato conosco.`
-    
-    sendWhatsAppNotification(patientData.phone, whatsappMessage)
-  }
-
-  const sessionPrice = psychologist.default_session_price || 15000
-
-  const { data: payment, error: paymentError } = await supabase
-    .from('payments')
-    .insert({
-      psychologist_id: psychologistId,
-      patient_id: patientId,
-      appointment_id: appointment.id,
-      amount: sessionPrice,
-      status: 'pending',
-      payment_method: 'pending',
-    })
-    .select()
-    .single()
-
-  if (paymentError) {
-    await supabase
-      .from('appointments')
-      .delete()
-      .eq('id', appointment.id)
-    
-    await supabase
-      .from('slots')
-      .update({ status: 'available' })
-      .eq('id', slotId)
-    
-    return { error: 'Erro ao criar registro de pagamento' }
-  }
-
-  await supabase
-    .from('consent_logs')
-    .insert({
-      patient_id: patientId,
-      psychologist_id: psychologistId,
-      consent_type: 'booking',
-      consent_version: CONSENT_VERSION,
-      ip_address: ip,
-      user_agent: userAgent,
+  // Log consent
+  await prisma.consentLog.create({
+    data: {
+      patientId: patient.id,
+      psychologistId,
+      consentType: 'booking',
       granted: true,
-    })
+      ipAddress: ip,
+      userAgent,
+    },
+  })
 
+  // Create payment
+  const payment = await prisma.payment.create({
+    data: {
+      psychologistId,
+      patientId: patient.id,
+      appointmentId: appointment.id,
+      amount: 15000,
+      status: 'pending',
+      method: 'pending',
+    },
+  })
+
+  // Create Stripe checkout
   try {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
-    
+
     const checkoutSession = await createCheckoutSession({
       appointmentId: appointment.id,
-      psychologistName: psychologist.full_name,
-      patientEmail: patientEmail,
-      amount: sessionPrice,
+      psychologistName: psychologist.fullName,
+      patientEmail: patient.email || '',
+      amount: 15000,
       successUrl: `${baseUrl}/p/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancelUrl: `${baseUrl}/p/${(await supabase.from('psychologists').select('slug').eq('id', psychologistId).single()).data?.slug}/book?cancelled=1`,
+      cancelUrl: `${baseUrl}/p/${psychologist.slug}/book?cancelled=1`,
     })
 
-    await supabase
-      .from('payments')
-      .update({ 
-        stripe_session_id: checkoutSession.id,
-        status: 'pending_payment'
-      })
-      .eq('id', payment.id)
+    await prisma.payment.update({
+      where: { id: payment.id },
+      data: { stripePaymentId: checkoutSession.id, status: 'pending' },
+    })
 
-    return { 
-      success: true, 
+    return {
+      success: true,
       paymentUrl: checkoutSession.url,
       appointmentId: appointment.id,
     }
   } catch (err: any) {
     console.error('Erro ao criar sessão de pagamento:', err)
-    
-    await supabase
-      .from('appointments')
-      .update({ status: 'cancelled' })
-      .eq('id', appointment.id)
-    
-    await supabase
-      .from('slots')
-      .update({ status: 'available' })
-      .eq('id', slotId)
-    
-    await supabase
-      .from('payments')
-      .update({ status: 'failed' })
-      .eq('id', payment.id)
-    
+
+    await prisma.appointment.update({
+      where: { id: appointment.id },
+      data: { status: 'cancelled' },
+    })
+
+    await prisma.payment.update({
+      where: { id: payment.id },
+      data: { status: 'cancelled' },
+    })
+
     return { error: 'Erro ao processar pagamento. Tente novamente.' }
   }
 }

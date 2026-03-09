@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { stripe, retrieveCheckoutSession } from '@/lib/stripe'
-import { createClient } from '@/lib/supabase/server'
+import { prisma } from '@/lib/prisma'
 
 export async function POST(request: Request) {
   try {
@@ -29,24 +29,15 @@ export async function POST(request: Request) {
     }
 
     const subscription = await stripe.subscriptions.retrieve(subscriptionId)
-
     const currentPeriodEnd = new Date((subscription as any).current_period_end * 1000)
 
-    const supabase = await createClient()
-
-    const { error: updateError } = await supabase
-      .from('psychologists')
-      .update({
+    await prisma.psychologist.update({
+      where: { id: psychologistId },
+      data: {
         plan: 'pro',
-        plan_expires_at: currentPeriodEnd.toISOString(),
-        stripe_subscription_id: subscriptionId,
-      })
-      .eq('id', psychologistId)
-
-    if (updateError) {
-      console.error('Error updating psychologist plan:', updateError)
-      return NextResponse.json({ error: 'Failed to update plan' }, { status: 500 })
-    }
+        planExpiresAt: currentPeriodEnd,
+      },
+    })
 
     return NextResponse.json({ success: true })
   } catch (error: any) {

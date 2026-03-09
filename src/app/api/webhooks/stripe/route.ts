@@ -1,7 +1,7 @@
 import { headers } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
-import { createClient } from '@/lib/supabase/server'
+import { prisma } from '@/lib/prisma'
 
 export async function POST(req: Request) {
   const body = await req.text()
@@ -31,81 +31,62 @@ export async function POST(req: Request) {
     )
   }
 
-  const supabase = await createClient()
-
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as any
-    
-    const { data: payment, error: paymentError } = await supabase
-      .from('payments')
-      .select('id, appointment_id, psychologist_id')
-      .eq('stripe_session_id', session.id)
-      .single()
 
-    if (paymentError || !payment) {
+    const payment = await prisma.payment.findFirst({
+      where: { stripePaymentId: session.id },
+    })
+
+    if (!payment) {
       console.error('Payment não encontrado para session:', session.id)
       return NextResponse.json({ error: 'Payment não encontrado' }, { status: 404 })
     }
 
-    const { appointment_id, psychologist_id } = payment
-
-    await supabase
-      .from('payments')
-      .update({ 
+    await prisma.payment.update({
+      where: { id: payment.id },
+      data: {
         status: 'paid',
-        payment_method: session.payment_method_types?.[0] || 'card',
-        paid_at: new Date().toISOString(),
+        method: session.payment_method_types?.[0] || 'card',
+        paidAt: new Date(),
+      },
+    })
+
+    if (payment.appointmentId) {
+      await prisma.appointment.update({
+        where: { id: payment.appointmentId },
+        data: { status: 'confirmed' },
       })
-      .eq('id', payment.id)
+    }
 
-    await supabase
-      .from('appointments')
-      .update({ status: 'confirmed' })
-      .eq('id', appointment_id)
-
-    console.log(`Pagamento confirmado para appointment ${appointment_id}`)
+    console.log(`Pagamento confirmado para appointment ${payment.appointmentId}`)
   }
 
   if (event.type === 'checkout.session.expired') {
     const session = event.data.object as any
-    
-    const { data: payment, error: paymentError } = await supabase
-      .from('payments')
-      .select('id, appointment_id, psychologist_id')
-      .eq('stripe_session_id', session.id)
-      .single()
 
-    if (paymentError || !payment) {
+    const payment = await prisma.payment.findFirst({
+      where: { stripePaymentId: session.id },
+    })
+
+    if (!payment) {
       console.error('Payment não encontrado para session:', session.id)
       return NextResponse.json({ error: 'Payment não encontrado' }, { status: 404 })
     }
 
-    const { appointment_id } = payment
+    await prisma.payment.update({
+      where: { id: payment.id },
+      data: { status: 'failed' },
+    })
 
-    const { data: appointment } = await supabase
-      .from('appointments')
-      .select('slot_id')
-      .eq('id', appointment_id)
-      .single()
-
-    await supabase
-      .from('payments')
-      .update({ status: 'failed' })
-      .eq('id', payment.id)
-
-    await supabase
-      .from('appointments')
-      .update({ status: 'cancelled' })
-      .eq('id', appointment_id)
-
-    if (appointment?.slot_id) {
-      await supabase
-        .from('slots')
-        .update({ status: 'available' })
-        .eq('id', appointment.slot_id)
+    if (payment.appointmentId) {
+      await prisma.appointment.update({
+        where: { id: payment.appointmentId },
+        data: { status: 'cancelled' },
+      })
     }
 
-    console.log(`Pagamento expirado para appointment ${appointment_id}, slot liberado`)
+    console.log(`Pagamento expirado para appointment ${payment.appointmentId}`)
   }
 
   if (event.type === 'customer.subscription.created') {
@@ -115,14 +96,13 @@ export async function POST(req: Request) {
     if (psychologistId) {
       const currentPeriodEnd = new Date(subscription.current_period_end * 1000)
 
-      await supabase
-        .from('psychologists')
-        .update({
+      await prisma.psychologist.update({
+        where: { id: psychologistId },
+        data: {
           plan: 'pro',
-          plan_expires_at: currentPeriodEnd.toISOString(),
-          stripe_subscription_id: subscription.id,
-        })
-        .eq('id', psychologistId)
+          planExpiresAt: currentPeriodEnd,
+        },
+      })
 
       console.log(`Assinatura Pro ativada para psicólogo ${psychologistId}`)
     }
@@ -137,24 +117,22 @@ export async function POST(req: Request) {
       const status = subscription.status
 
       if (status === 'active') {
-        await supabase
-          .from('psychologists')
-          .update({
+        await prisma.psychologist.update({
+          where: { id: psychologistId },
+          data: {
             plan: 'pro',
-            plan_expires_at: currentPeriodEnd.toISOString(),
-          })
-          .eq('id', psychologistId)
-
+            planExpiresAt: currentPeriodEnd,
+          },
+        })
         console.log(`Assinatura Pro renovada para psicólogo ${psychologistId}`)
       } else if (status === 'canceled' || status === 'unpaid') {
-        await supabase
-          .from('psychologists')
-          .update({
+        await prisma.psychologist.update({
+          where: { id: psychologistId },
+          data: {
             plan: 'free',
-            plan_expires_at: currentPeriodEnd.toISOString(),
-          })
-          .eq('id', psychologistId)
-
+            planExpiresAt: currentPeriodEnd,
+          },
+        })
         console.log(`Assinatura Pro cancelada/expirada para psicólogo ${psychologistId}`)
       }
     }
@@ -163,23 +141,17 @@ export async function POST(req: Request) {
   if (event.type === 'customer.subscription.deleted') {
     const subscription = event.data.object as any
 
-    const { data: psychologist } = await supabase
-      .from('psychologists')
-      .select('id')
-      .eq('stripe_subscription_id', subscription.id)
-      .single()
-
-    if (psychologist) {
-      await supabase
-        .from('psychologists')
-        .update({
+    // Find by stripe subscription in metadata
+    const psychologistId = subscription.metadata?.psychologistId
+    if (psychologistId) {
+      await prisma.psychologist.update({
+        where: { id: psychologistId },
+        data: {
           plan: 'free',
-          plan_expires_at: null,
-          stripe_subscription_id: null,
-        })
-        .eq('id', psychologist.id)
-
-      console.log(`Assinatura Pro encerrada para psicólogo ${psychologist.id}`)
+          planExpiresAt: null,
+        },
+      })
+      console.log(`Assinatura Pro encerrada para psicólogo ${psychologistId}`)
     }
   }
 

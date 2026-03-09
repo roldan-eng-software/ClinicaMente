@@ -1,8 +1,7 @@
 'use client'
 
-import { Suspense, useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { useSearchParams, useRouter } from 'next/navigation'
+import { Suspense, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { usePsychologist } from './context'
 import { UpcomingSessionsTable } from '@/components/dashboard/UpcomingSessionsTable'
 import { FinancialReport } from '@/components/dashboard/FinancialReport'
@@ -16,8 +15,6 @@ function DashboardContent() {
   const [copied, setCopied] = useState(false)
   const [activeTab, setActiveTab] = useState<TabType>('overview')
   const searchParams = useSearchParams()
-  const router = useRouter()
-  const supabase = createClient()
   const psychologist = usePsychologist()
 
   const showWelcome = searchParams.get('welcome') === 'true'

@@ -1,102 +1,63 @@
-import { createClient } from '@/lib/supabase/server'
+'use server'
 
-export type PlanAction = 
-  | 'create_patient'
-  | 'create_appointment'
-  | 'access_notes'
-  | 'access_reminders'
-  | 'access_reports'
-
-export interface PlanCheckResult {
-  allowed: boolean
-  current?: number
-  limit?: number
-  feature?: string
-  upgradeUrl?: string
-}
+import { auth } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
 
 export async function checkPlanLimit(
   psychologistId: string,
-  action: PlanAction
-): Promise<PlanCheckResult> {
-  const supabase = await createClient()
+  action: string
+): Promise<{ allowed: boolean; limit?: number; upgradeUrl?: string }> {
+  const psychologist = await prisma.psychologist.findUnique({
+    where: { id: psychologistId },
+    select: { plan: true },
+  })
 
-  const { data: psychologist, error: psychologistError } = await supabase
-    .from('psychologists')
-    .select('plan, plan_expires_at')
-    .eq('id', psychologistId)
-    .single()
+  if (!psychologist) return { allowed: false }
 
-  if (psychologistError || !psychologist) {
-    return { allowed: false, feature: 'Erro ao verificar plano' }
+  const plan = psychologist.plan
+
+  // Pro plan: no limits
+  if (plan === 'pro') return { allowed: true }
+
+  // Free plan limits
+  const limits: Record<string, number> = {
+    create_appointment: 10,
+    create_patient: 5,
   }
 
-  const now = new Date()
-  const planExpired = psychologist.plan_expires_at && new Date(psychologist.plan_expires_at) < now
-  const plan = planExpired ? 'free' : psychologist.plan
+  const limit = limits[action]
+  if (!limit) return { allowed: true }
 
-  const { data: limits } = await supabase
-    .from('plan_limits')
-    .select('*')
-    .eq('plan', plan)
-    .single()
+  // Count current month usage
+  const startOfMonth = new Date()
+  startOfMonth.setDate(1)
+  startOfMonth.setHours(0, 0, 0, 0)
 
-  if (!limits) {
-    return { allowed: false, feature: 'Plano inválido' }
+  let count = 0
+
+  if (action === 'create_appointment') {
+    count = await prisma.appointment.count({
+      where: {
+        psychologistId,
+        createdAt: { gte: startOfMonth },
+      },
+    })
+  } else if (action === 'create_patient') {
+    count = await prisma.patient.count({
+      where: {
+        psychologistId,
+        createdAt: { gte: startOfMonth },
+      },
+    })
   }
 
-  switch (action) {
-    case 'create_patient': {
-      const { count: patientCount } = await supabase
-        .from('patients')
-        .select('*', { count: 'exact', head: true })
-        .eq('psychologist_id', psychologistId)
-
-      const current = patientCount || 0
-      if (current >= limits.max_patients) {
-        return {
-          allowed: false,
-          current,
-          limit: limits.max_patients,
-          upgradeUrl: '/dashboard/upgrade'
-        }
-      }
-      return { allowed: true, current, limit: limits.max_patients }
+  if (count >= limit) {
+    return {
+      allowed: false,
+      limit,
+      upgradeUrl: '/dashboard/upgrade',
     }
-
-    case 'create_appointment': {
-      const startOfMonth = new Date()
-      startOfMonth.setDate(1)
-      startOfMonth.setHours(0, 0, 0, 0)
-
-      const { count: appointmentCount } = await supabase
-        .from('appointments')
-        .select('*', { count: 'exact', head: true })
-        .eq('psychologist_id', psychologistId)
-        .gte('start_time', startOfMonth.toISOString())
-
-      const current = appointmentCount || 0
-      if (current >= limits.max_appointments_per_month) {
-        return {
-          allowed: false,
-          current,
-          limit: limits.max_appointments_per_month,
-          upgradeUrl: '/dashboard/upgrade'
-        }
-      }
-      return { allowed: true, current, limit: limits.max_appointments_per_month }
-    }
-
-    case 'access_notes':
-      return { allowed: limits.has_notes, feature: 'Notas clínicas' }
-
-    case 'access_reminders':
-      return { allowed: limits.has_reminders, feature: 'Lembretes automatizados' }
-
-    case 'access_reports':
-      return { allowed: limits.has_reports, feature: 'Relatórios' }
-
-    default:
-      return { allowed: false, feature: 'Ação desconhecida' }
   }
+
+  return { allowed: true }
 }

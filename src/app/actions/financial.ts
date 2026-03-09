@@ -1,6 +1,7 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedPsychologist } from '@/lib/auth-helpers'
+import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 
 const financialDataSchema = z.object({
@@ -11,13 +12,8 @@ const financialDataSchema = z.object({
 })
 
 export async function saveFinancialData(formData: FormData) {
-  const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) {
-    return { error: 'Usuário não autenticado' }
-  }
+  const { error, psychologist } = await getAuthenticatedPsychologist()
+  if (error || !psychologist) return { error: error || 'Psicólogo não encontrado' }
 
   const rawData = {
     sessionPrice: formData.get('sessionPrice'),
@@ -27,23 +23,19 @@ export async function saveFinancialData(formData: FormData) {
   }
 
   const validated = financialDataSchema.safeParse(rawData)
-
   if (!validated.success) {
-    const firstError = validated.error.issues[0]
-    return { error: firstError?.message || 'Erro de validação' }
+    return { error: validated.error.issues[0]?.message || 'Erro de validação' }
   }
 
-  const { error: updateError } = await supabase
-    .from('psychologists')
-    .update({
-      default_session_price: validated.data.sessionPrice,
-      session_duration_minutes: validated.data.sessionDuration,
-      cancellation_policy_hours: validated.data.cancellationPolicy,
+  try {
+    await prisma.psychologist.update({
+      where: { id: psychologist.id },
+      data: {
+        sessionDurationMinutes: validated.data.sessionDuration,
+      },
     })
-    .eq('user_id', user.id)
-
-  if (updateError) {
-    return { error: updateError.message }
+  } catch (e: any) {
+    return { error: e.message || 'Erro ao salvar dados financeiros' }
   }
 
   return { success: true }
