@@ -44,36 +44,43 @@ export default function LandingPage() {
       </header>
 
       {/* 2. HERO SECTION Larga e Reativa */}
-      <section className="relative w-full h-screen min-h-[600px] flex items-center justify-center mt-16">
-        <div className="absolute inset-0 -z-10 bg-blue-900">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 opacity-90" />
+      <section className="relative w-full h-screen min-h-[600px] flex items-center justify-center mt-1">
+        <div className="absolute inset-0 -z-10">
+          <Image 
+            src="/Hero.png" 
+            alt="Fundo hero" 
+            fill 
+            className="object-cover"
+            priority
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/40 dark:from-black/60 dark:via-black/30 dark:to-black/70" />
         </div>
         
         <div className="text-center px-4 max-w-4xl mx-auto z-10 animate-fade-in-up">
-          <div className="inline-flex items-center gap-2 bg-blue-800/50 backdrop-blur-sm border border-blue-700 text-blue-100 px-4 py-2 rounded-full text-sm font-medium mb-6">
+          <div className="inline-flex items-center gap-2 bg-white/20 dark:bg-black/40 backdrop-blur-sm border border-white/30 dark:border-white/20 text-white dark:text-gray-100 px-4 py-2 rounded-full text-sm font-medium mb-6">
             <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-            Mais de 500 психólogos confiam em nós
+            Mais de 20 clinicas confiam em nós
           </div>
-          <h1 className="text-4xl md:text-6xl font-extrabold text-white tracking-tight mb-6 leading-tight">
-            Organize sua clínica, <span className="text-blue-300">cuide mais dos seus pacientes.</span>
+          <h1 className="text-4xl md:text-6xl font-extrabold text-gray-900 dark:text-white tracking-tight mb-6 leading-tight">
+            Organize sua clínica, <span className="text-blue-600 dark:text-blue-300">cuide mais dos seus pacientes.</span>
           </h1>
-          <p className="text-lg md:text-xl text-gray-200 mb-8 max-w-2xl mx-auto">
+          <p className="text-lg md:text-xl text-gray-700 dark:text-gray-100 mb-8 max-w-2xl mx-auto">
             Agendamentos online, prontuários seguros, finanças em um só lugar e lembretes automáticos. Tudo pensado para o dia a dia do psicólogo moderno.
           </p>
           <div className="flex items-center justify-center gap-4 mb-8">
              <Link href="/signup" className="bg-white text-blue-800 hover:bg-gray-100 px-8 py-3 rounded-lg font-semibold transition-all shadow-lg hover:scale-105">
                 Começar agora grátis
              </Link>
-             <Link href="#como-funciona" className="border border-white/30 text-white hover:bg-white/10 px-8 py-3 rounded-lg font-semibold transition-all">
+             <Link href="#como-funciona" className="border border-gray-600 text-gray-800 dark:border-white/30 dark:text-white hover:bg-black/10 dark:hover:bg-white/10 px-8 py-3 rounded-lg font-semibold transition-all">
                 Ver como funciona
              </Link>
           </div>
-          <div className="flex items-center justify-center gap-8 opacity-70">
-            <span className="text-gray-300 text-sm font-medium">Utilizado por clínicas parceiras:</span>
+          <div className="flex items-center justify-center gap-8 opacity-90">
+            <span className="text-gray-700 dark:text-white text-sm font-medium">Utilizado por clínicas parceiras:</span>
             <div className="flex gap-4 items-center">
-              <div className="w-20 h-8 bg-white/10 rounded flex items-center justify-center text-xs text-white/70">CRP-SP</div>
-              <div className="w-20 h-8 bg-white/10 rounded flex items-center justify-center text-xs text-white/70">CRP-RJ</div>
-              <div className="w-20 h-8 bg-white/10 rounded flex items-center justify-center text-xs text-white/70">SBP</div>
+              <div className="w-20 h-8 bg-black/10 dark:bg-white/10 rounded flex items-center justify-center text-xs text-gray-700 dark:text-white/70">CRP-SP</div>
+              <div className="w-20 h-8 bg-black/10 dark:bg-white/10 rounded flex items-center justify-center text-xs text-gray-700 dark:text-white/70">CRP-RJ</div>
+              <div className="w-20 h-8 bg-black/10 dark:bg-white/10 rounded flex items-center justify-center text-xs text-gray-700 dark:text-white/70">SBP</div>
             </div>
           </div>
         </div>
@@ -84,11 +91,11 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             <div>
-              <div className="text-3xl md:text-4xl font-bold text-blue-600 dark:text-blue-400">500+</div>
+              <div className="text-3xl md:text-4xl font-bold text-blue-600 dark:text-blue-400">70+</div>
               <div className="text-gray-600 dark:text-gray-400 mt-1">Psicólogos ativos</div>
             </div>
             <div>
-              <div className="text-3xl md:text-4xl font-bold text-blue-600 dark:text-blue-400">50.000+</div>
+              <div className="text-3xl md:text-4xl font-bold text-blue-600 dark:text-blue-400">8.000+</div>
               <div className="text-gray-600 dark:text-gray-400 mt-1">Consultas agendadas</div>
             </div>
             <div>
@@ -116,7 +123,7 @@ export default function LandingPage() {
               <div className="w-14 h-14 bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform text-2xl">
                 📅
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Agenda Inteligente</h3>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">Agenda Inteligente</h3>
               <p className="text-gray-600 leading-relaxed text-sm">
                 Visualize sua semana em segundos, crie horários recorrentes e receba agendamentos online sem perder o controle.
               </p>
@@ -190,14 +197,23 @@ export default function LandingPage() {
           {[1, 2, 3, 4, 5, 1, 2, 3, 4, 5].map((idx, i) => (
             <div 
               key={`${idx}-${i}`} 
-              className="w-full md:w-1/2 lg:w-1/3 flex-none relative h-[400px] sm:h-[450px] bg-slate-300 border-r border-white"
+              className="w-full md:w-1/2 lg:w-1/3 flex-none relative h-[400px] sm:h-[450px] bg-slate-300 dark:bg-slate-700 border-r border-white dark:border-gray-800"
             >
-              <div className="absolute inset-0 flex items-center justify-center text-slate-500 font-bold opacity-50 text-2xl">
-                 Foto do Sistema {idx}
-              </div>
+              {idx === 1 ? (
+                <Image 
+                  src="/Hero.png" 
+                  alt="Hero" 
+                  fill 
+                  className="object-cover"
+                />
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center text-slate-500 dark:text-slate-400 font-bold opacity-50 text-2xl">
+                   Foto do Sistema {idx}
+                </div>
+              )}
               
-              <div className="absolute bottom-0 w-full bg-gradient-to-t from-black/80 via-black/40 to-transparent p-6 pt-24 text-center">
-                <p className="text-white text-base md:text-lg font-medium drop-shadow-md">
+              <div className="absolute bottom-0 w-full bg-gradient-to-t from-black/80 via-black/40 to-transparent dark:from-black/90 dark:via-black/60 dark:to-black/80 p-6 pt-24 text-center">
+                <p className="text-white dark:text-gray-100 text-base md:text-lg font-medium drop-shadow-md">
                    {idx === 1 && "Agenda dinâmica e intuitiva para não perder nenhum horário."}
                    {idx === 2 && "Prontuários seguros e criptografados para garantir a LGPD."}
                    {idx === 3 && "Visão financeira clara do seu faturamento mensal."}
